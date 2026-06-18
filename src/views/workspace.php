@@ -8,7 +8,7 @@ $canSaisie = hasPermission('can_saisie');
 $canDashboard = hasPermission('can_dashboard');
 
 // --------------------------------------------------------
-// MOTEUR DE NAVIGATION TEMPORELLE
+// MOTEUR DE NAVIGATION TEMPORELLE (Pour le Planning Quotidien)
 // --------------------------------------------------------
 $view_mode = $_GET['view'] ?? 'week'; 
 $anchor_date_str = $_GET['date'] ?? date('Y-m-d');
@@ -22,11 +22,9 @@ $display_period_text = '';
 if ($view_mode === 'week') {
     $start_date = clone $anchor_date;
     $start_date->modify('Monday this week');
-    
     $nav_prev = (clone $start_date)->modify('-1 week')->format('Y-m-d');
     $nav_next = (clone $start_date)->modify('+1 week')->format('Y-m-d');
     $display_period_text = "Semaine du " . $start_date->format('d/m/Y');
-
     for($i=0; $i<7; $i++) {
         $plan_dates[] = clone $start_date;
         $start_date->modify('+1 day');
@@ -35,10 +33,11 @@ if ($view_mode === 'week') {
     $start_date = clone $anchor_date;
     $start_date->modify('first day of this month');
     $end_of_month = (clone $start_date)->modify('last day of this month');
-    
     $nav_prev = (clone $start_date)->modify('-1 month')->format('Y-m-d');
     $nav_next = (clone $start_date)->modify('+1 month')->format('Y-m-d');
-    $display_period_text = "Mois de " . $start_date->format('M Y');
+    
+    $mois_fr = [1=>'Jan',2=>'Fév',3=>'Mar',4=>'Avr',5=>'Mai',6=>'Juin',7=>'Juil',8=>'Aoû',9=>'Sep',10=>'Oct',11=>'Nov',12=>'Déc'];
+    $display_period_text = "Mois de " . $mois_fr[(int)$start_date->format('n')] . ' ' . $start_date->format('Y');
 
     while($start_date <= $end_of_month) {
         $plan_dates[] = clone $start_date;
@@ -47,16 +46,13 @@ if ($view_mode === 'week') {
 }
 
 // --------------------------------------------------------
-// PRÉPARATION DE LA GRILLE & FILTRAGE EXCLUS
+// PRÉPARATION DE LA GRILLE (Filtre des exclus)
 // --------------------------------------------------------
 $displayUsers = [];
 if ($_SESSION['role'] === 'admin' || $canDashboard) {
     if ($_SESSION['role'] === 'admin') $displayUsers['admin'] = 'Administrateur';
     foreach($allUsers as $id => $u) {
-        // N'ajouter que les utilisateurs qui NE SONT PAS exclus
-        if (empty($u['is_excluded'])) {
-            $displayUsers[$id] = $u['name'];
-        }
+        if (empty($u['is_excluded'])) $displayUsers[$id] = $u['name'];
     }
 } else {
     $displayUsers[$_SESSION['user_id']] = $_SESSION['name'];
@@ -76,26 +72,89 @@ foreach($allData as $e) {
 }
 
 // --------------------------------------------------------
-// CALCULS POUR LE DASHBOARD (HEATMAP KPI)
+// PREPARATION DU DASHBOARD GLOBAL (Aggrégation Semaine/Mois)
 // --------------------------------------------------------
-$total_working_days = 0;
-foreach($plan_dates as $d) {
-    if(!in_array($d->format('N'), [6,7])) $total_working_days++;
-}
-$total_fte = count($displayUsers);
-$capacity_total_jours = $total_working_days * $total_fte;
+$dash_columns = [];
+$mois_fr = [1=>'Jan',2=>'Fév',3=>'Mar',4=>'Avr',5=>'Mai',6=>'Juin',7=>'Juil',8=>'Aoû',9=>'Sep',10=>'Oct',11=>'Nov',12=>'Déc'];
 
-$consumed_jours = 0;
-foreach($displayUsers as $uid => $uname) {
-    foreach($plan_dates as $d) {
-        $dateStr = $d->format('Y-m-d');
-        $consumed_jours += array_sum(array_column($grid[$uid][$dateStr], 'valeur_j'));
+if ($view_mode === 'month') {
+    // Vue Mois : Affichage de 6 mois glissants
+    $start_dash = clone $anchor_date;
+    $start_dash->modify('first day of this month');
+    for ($i = 0; $i < 6; $i++) {
+        $end_dash = (clone $start_dash)->modify('last day of this month');
+        $dash_columns[] = [
+            'label' => $mois_fr[(int)$start_dash->format('n')] . ' ' . $start_dash->format('Y'),
+            'start' => clone $start_dash,
+            'end' => clone $end_dash,
+            'working_days' => 0,
+            'consumed_per_user' => array_fill_keys(array_keys($displayUsers), 0),
+            'total_consumed' => 0
+        ];
+        $start_dash->modify('+1 month');
+    }
+} else {
+    // Vue Semaine : Affichage de 8 semaines glissantes
+    $start_dash = clone $anchor_date;
+    $start_dash->modify('Monday this week');
+    for ($i = 0; $i < 8; $i++) {
+        $end_dash = (clone $start_dash)->modify('Sunday this week');
+        $dash_columns[] = [
+            'label' => 'Sem ' . $start_dash->format('W') . '<br><small class="text-muted fw-normal">(' . $start_dash->format('d/m') . ')</small>',
+            'start' => clone $start_dash,
+            'end' => clone $end_dash,
+            'working_days' => 0,
+            'consumed_per_user' => array_fill_keys(array_keys($displayUsers), 0),
+            'total_consumed' => 0
+        ];
+        $start_dash->modify('+1 week');
     }
 }
-$staffing_percent = $capacity_total_jours > 0 ? round(($consumed_jours / $capacity_total_jours) * 100) : 0;
+
+// Calcul de la capacité par colonne (jours ouvrés)
+foreach ($dash_columns as &$col) {
+    $curr = clone $col['start'];
+    while ($curr <= $col['end']) {
+        if (!in_array($curr->format('N'), [6, 7])) {
+            $col['working_days']++;
+        }
+        $curr->modify('+1 day');
+    }
+    $col['total_capacity'] = $col['working_days'] * count($displayUsers);
+}
+unset($col); // Rompre la référence
+
+// Remplissage des consommations pour le Dashboard
+foreach ($allData as $e) {
+    $uid = $e['user_id'];
+    if (!isset($displayUsers[$uid])) continue;
+    $date = $e['date'];
+    
+    foreach ($dash_columns as &$col) {
+        if ($date >= $col['start']->format('Y-m-d') && $date <= $col['end']->format('Y-m-d')) {
+            $col['consumed_per_user'][$uid] += $e['valeur_j'];
+            $col['total_consumed'] += $e['valeur_j'];
+            break;
+        }
+    }
+    unset($col);
+}
+
+// Fonction utilitaire pour générer la couleur Heatmap
+function getHeatmapStyle($perc) {
+    if ($perc == 0) return 'background-color: #ffffff;';
+    if ($perc > 0 && $perc < 100) return 'background-color: #a7f3d0; color: #065f46;';
+    if ($perc == 100) return 'background-color: #34d399; color: #064e3b; font-weight: bold;';
+    return 'background-color: #fed7aa; color: #9a3412; font-weight: bold; box-shadow: inset 0 0 0 1px #f97316;';
+}
+
+// Variables KPI du haut (basées sur la toute première colonne affichée pour rester cohérent)
+$kpi_cap_max = $dash_columns[0]['total_capacity'];
+$kpi_consumed = $dash_columns[0]['total_consumed'];
+$kpi_percent = $kpi_cap_max > 0 ? round(($kpi_consumed / $kpi_cap_max) * 100) : 0;
+
 ?>
 
-<!-- BARRE DE NAVIGATION TEMPORELLE -->
 <div class="d-flex justify-content-between align-items-center mb-3 bg-white p-2 rounded shadow-sm border">
     <div>
         <a href="?action=home&view=<?= $view_mode ?>&date=<?= $nav_prev ?>" class="btn btn-sm btn-light border"><i class="bi bi-chevron-left"></i></a>
@@ -109,14 +168,13 @@ $staffing_percent = $capacity_total_jours > 0 ? round(($consumed_jours / $capaci
     </div>
 </div>
 
-<!-- ONGLETS -->
 <ul class="nav nav-tabs" id="viewTabs" role="tablist">
   <li class="nav-item" role="presentation">
-    <button class="nav-link active" id="planning-tab" data-bs-toggle="tab" data-bs-target="#planning" type="button">Allocation Ressources</button>
+    <button class="nav-link active" id="planning-tab" data-bs-toggle="tab" data-bs-target="#planning" type="button">Allocation Quotidienne</button>
   </li>
   <?php if($canSaisie): ?>
   <li class="nav-item" role="presentation">
-    <button class="nav-link" id="saisie-tab" data-bs-toggle="tab" data-bs-target="#saisie" type="button">Ma Déclaration Avancée</button>
+    <button class="nav-link" id="saisie-tab" data-bs-toggle="tab" data-bs-target="#saisie" type="button">Saisie Avancée</button>
   </li>
   <?php endif; ?>
   <?php if($canDashboard): ?>
@@ -128,7 +186,6 @@ $staffing_percent = $capacity_total_jours > 0 ? round(($consumed_jours / $capaci
 
 <div class="tab-content" id="viewTabsContent">
 
-    <!-- ONGLET 1 : PLANNING DETAILLE -->
     <div class="tab-pane fade show active" id="planning" role="tabpanel">
         <?php if(isset($_GET['success'])) echo "<div class='alert alert-success py-2 small'>Action enregistrée.</div>"; ?>
         
@@ -203,7 +260,6 @@ $staffing_percent = $capacity_total_jours > 0 ? round(($consumed_jours / $capaci
         </div>
     </div>
 
-    <!-- ONGLET 2 : SAISIE AVANCÉE -->
     <?php if($canSaisie): ?>
     <div class="tab-pane fade mt-4" id="saisie" role="tabpanel">
         <div class="row justify-content-center">
@@ -263,62 +319,73 @@ $staffing_percent = $capacity_total_jours > 0 ? round(($consumed_jours / $capaci
     </div>
     <?php endif; ?>
 
-    <!-- ONGLET 3 : DASHBOARD MANAGER & HEATMAP -->
     <?php if($canDashboard): ?>
     <div class="tab-pane fade mt-4" id="dashboard" role="tabpanel">
         
-        <!-- KPI Globaux -->
         <div class="row mb-4">
             <div class="col-md-4">
                 <div class="card shadow-sm border-0 bg-white">
                     <div class="card-body text-center">
-                        <h6 class="text-muted fw-bold text-uppercase mb-1">Capacité Max Théorique</h6>
-                        <h2 class="text-dark mb-0"><?= $capacity_total_jours ?> Jours</h2>
-                        <small class="text-muted">Sur la période affichée</small>
+                        <h6 class="text-muted fw-bold text-uppercase mb-1">Capacité Max (<?= strip_tags($dash_columns[0]['label']) ?>)</h6>
+                        <h2 class="text-dark mb-0"><?= $kpi_cap_max ?> Jours</h2>
+                        <small class="text-muted">Total de jours ouvrés disponibles</small>
                     </div>
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="card shadow-sm border-0 bg-white">
                     <div class="card-body text-center">
-                        <h6 class="text-muted fw-bold text-uppercase mb-1">Charge Allouée</h6>
-                        <h2 class="text-primary mb-0"><?= $consumed_jours ?> Jours</h2>
-                        <small class="text-muted">Tâches planifiées</small>
+                        <h6 class="text-muted fw-bold text-uppercase mb-1">Charge Allouée (<?= strip_tags($dash_columns[0]['label']) ?>)</h6>
+                        <h2 class="text-primary mb-0"><?= $kpi_consumed ?> Jours</h2>
+                        <small class="text-muted">Tâches affectées sur la période</small>
                     </div>
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="card shadow-sm border-0 bg-white">
                     <div class="card-body text-center">
-                        <h6 class="text-muted fw-bold text-uppercase mb-1">Staffing Équipe</h6>
-                        <h2 class="<?= $staffing_percent > 100 ? 'text-danger' : 'text-success' ?> mb-0"><?= $staffing_percent ?> %</h2>
+                        <h6 class="text-muted fw-bold text-uppercase mb-1">Staffing Global</h6>
+                        <h2 class="<?= $kpi_percent > 100 ? 'text-danger' : 'text-success' ?> mb-0"><?= $kpi_percent ?> %</h2>
                         <div class="progress mt-2" style="height: 10px;">
-                            <div class="progress-bar <?= $staffing_percent > 100 ? 'bg-danger' : 'bg-success' ?>" role="progressbar" style="width: <?= min(100, $staffing_percent) ?>%;"></div>
+                            <div class="progress-bar <?= $kpi_percent > 100 ? 'bg-danger' : 'bg-success' ?>" role="progressbar" style="width: <?= min(100, $kpi_percent) ?>%;"></div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- TABLEAU HEATMAP (Style demandé) -->
         <div class="planning-container shadow-sm border-0">
             <table class="table planning-table mb-0 text-center align-middle">
                 <thead>
-                    <tr>
-                        <th class="user-cell align-middle text-muted small text-uppercase text-start ps-3">Membres Actifs</th>
-                        <?php foreach($plan_dates as $d): 
-                            $isWeekend = in_array($d->format('N'), [6,7]);
-                        ?>
-                            <th class="day-cell <?= $isWeekend ? 'weekend' : '' ?>" style="min-width: 80px; width: 80px;">
-                                <div class="small fw-bold text-uppercase text-muted" style="font-size: 0.65rem;">
-                                    <?= substr(["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"][$d->format('w')], 0, 3) ?>
-                                </div>
-                                <div class="fs-6 text-dark"><?= $d->format('d/m') ?></div>
+                    <tr class="bg-light">
+                        <th class="user-cell align-middle text-muted small text-uppercase text-start ps-3" style="border-bottom: 2px solid #cbd5e1;">Membres Actifs</th>
+                        <?php foreach($dash_columns as $col): ?>
+                            <th class="day-cell align-middle" style="min-width: 110px; width: 110px; border-bottom: 2px solid #cbd5e1;">
+                                <div class="fs-6 fw-bold text-dark"><?= $col['label'] ?></div>
+                                <div class="small text-muted" style="font-size: 0.65rem;">Capacité: <?= $col['working_days'] ?>j</div>
                             </th>
                         <?php endforeach; ?>
                     </tr>
                 </thead>
                 <tbody>
+                    
+                    <tr class="bg-white">
+                        <td class="user-cell align-middle text-start ps-3" style="border-bottom: 3px solid #94a3b8;">
+                            <div class="fw-bold text-dark text-uppercase"><i class="bi bi-people-fill me-2 text-primary"></i> Total Équipe</div>
+                        </td>
+                        <?php foreach($dash_columns as $col): 
+                            $totalJ = $col['total_consumed'];
+                            $capMax = $col['total_capacity'];
+                            $perc = $capMax > 0 ? round(($totalJ / $capMax) * 100) : 0;
+                            $bgStyle = getHeatmapStyle($perc);
+                        ?>
+                            <td style="<?= $bgStyle ?> border-bottom: 3px solid #94a3b8;">
+                                <div style="font-size: 0.9rem;"><?= $perc ?>%</div>
+                                <div style="font-size: 0.65rem; opacity: 0.8;"><?= $totalJ ?>j / <?= $capMax ?>j</div>
+                            </td>
+                        <?php endforeach; ?>
+                    </tr>
+
                     <?php foreach($displayUsers as $uid => $uname): ?>
                     <tr>
                         <td class="user-cell align-middle text-start ps-3">
@@ -329,40 +396,20 @@ $staffing_percent = $capacity_total_jours > 0 ? round(($consumed_jours / $capaci
                                 <span class="fw-bold text-dark small"><?= htmlspecialchars($uname) ?></span>
                             </div>
                         </td>
-                        <?php foreach($plan_dates as $d): 
-                            $dateStr = $d->format('Y-m-d');
-                            $dayTasks = $grid[$uid][$dateStr];
-                            $isWeekend = in_array($d->format('N'), [6,7]);
-                            $totalJ = array_sum(array_column($dayTasks, 'valeur_j'));
-                            
-                            // Logique de couleur (Heatmap)
-                            $perc = round($totalJ * 100);
-                            $bgStyle = '';
-                            $content = '';
-                            
-                            if ($isWeekend) {
-                                $bgStyle = 'background-color: #f8f9fa;'; // Gris clair standard
-                            } else {
-                                if ($perc == 0) {
-                                    $bgStyle = 'background-color: #ffffff;'; // Vide = Blanc
-                                } elseif ($perc > 0 && $perc < 100) {
-                                    $bgStyle = 'background-color: #a7f3d0; color: #065f46;'; // Vert clair
-                                    $content = $perc . '%';
-                                } elseif ($perc == 100) {
-                                    $bgStyle = 'background-color: #34d399; color: #064e3b; font-weight: bold;'; // Vert validé
-                                    $content = $perc . '%';
-                                } else {
-                                    $bgStyle = 'background-color: #fed7aa; color: #9a3412; font-weight: bold;'; // Orange Warning
-                                    $content = '<i class="bi bi-exclamation-triangle"></i><br>' . $perc . '%';
-                                }
-                            }
+                        <?php foreach($dash_columns as $col): 
+                            $totalJ = $col['consumed_per_user'][$uid];
+                            $capMax = $col['working_days'];
+                            $perc = $capMax > 0 ? round(($totalJ / $capMax) * 100) : 0;
+                            $bgStyle = getHeatmapStyle($perc);
                         ?>
                             <td style="<?= $bgStyle ?> transition: background-color 0.2s;">
-                                <span style="font-size: 0.85rem;"><?= $content ?></span>
+                                <div style="font-size: 0.85rem;"><?= $perc ?>%</div>
+                                <div style="font-size: 0.65rem; opacity: 0.7;"><?= $totalJ ?>j / <?= $capMax ?>j</div>
                             </td>
                         <?php endforeach; ?>
                     </tr>
                     <?php endforeach; ?>
+                    
                 </tbody>
             </table>
         </div>
@@ -372,7 +419,6 @@ $staffing_percent = $capacity_total_jours > 0 ? round(($consumed_jours / $capaci
 
 </div>
 
-<!-- MODALE D'ALLOCATION RAPIDE -->
 <div class="modal fade" id="fastAddModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered modal-sm">
     <div class="modal-content">
