@@ -83,7 +83,8 @@ if ($action === 'admin' && $_SESSION['role'] === 'admin' && $_SERVER['REQUEST_ME
             'email' => $_POST['u_email'],
             'password' => password_hash($_POST['u_pass'], PASSWORD_DEFAULT),
             'can_saisie' => isset($_POST['u_can_saisie']),
-            'can_dashboard' => isset($_POST['u_can_dashboard'])
+            'can_dashboard' => isset($_POST['u_can_dashboard']),
+            'is_excluded' => isset($_POST['u_is_excluded'])
         ];
         saveDb(FILE_USERS, $users);
     }
@@ -95,11 +96,12 @@ if ($action === 'admin' && $_SESSION['role'] === 'admin' && $_SERVER['REQUEST_ME
         if (isset($users[$uid])) {
             $users[$uid]['name'] = $_POST['u_name'];
             $users[$uid]['email'] = $_POST['u_email'];
-            if (!empty($_POST['u_pass'])) { // Ne modifie le mdp que s'il est renseigné
+            if (!empty($_POST['u_pass'])) {
                 $users[$uid]['password'] = password_hash($_POST['u_pass'], PASSWORD_DEFAULT);
             }
             $users[$uid]['can_saisie'] = isset($_POST['u_can_saisie']);
             $users[$uid]['can_dashboard'] = isset($_POST['u_can_dashboard']);
+            $users[$uid]['is_excluded'] = isset($_POST['u_is_excluded']);
             saveDb(FILE_USERS, $users);
         }
     }
