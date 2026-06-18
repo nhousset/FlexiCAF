@@ -7,18 +7,16 @@ define('FILE_USERS', DIR_DB . 'users.json');
 define('FILE_TASKS', DIR_DB . 'tasks.json');
 define('FILE_DATA', DIR_DB . 'data.json');
 
-// Création du répertoire de données s'il n'existe pas
 if (!is_dir(DIR_DB)) mkdir(DIR_DB, 0755, true);
 
-// Init des fichiers par défaut si manquants
 if (!file_exists(FILE_USERS)) file_put_contents(FILE_USERS, json_encode([]));
 if (!file_exists(FILE_DATA)) file_put_contents(FILE_DATA, json_encode([]));
 if (!file_exists(FILE_TASKS)) {
-    // Tâches IT Ops par défaut avec code ITBM
     $defaultTasks = [
-        uniqid() => ['title' => 'Run - Support N2/N3', 'desc' => 'Résolution d\'incidents et requêtes', 'itbm' => 'ITBM-RUN-001'],
-        uniqid() => ['title' => 'MCO Infrastructure', 'desc' => 'Supervision, patchs, maintenance', 'itbm' => 'ITBM-MCO-002'],
-        uniqid() => ['title' => 'Congés Payés', 'desc' => 'Absence validée', 'itbm' => 'ITBM-ABS-000']
+        uniqid('tsk_') => ['title' => 'Run - Support N2/N3', 'desc' => 'Résolution incidents', 'itbm' => 'ITBM-RUN-001', 'color' => '#bae6fd'],
+        uniqid('tsk_') => ['title' => 'MCO Infrastructure', 'desc' => 'Supervision', 'itbm' => 'ITBM-MCO-002', 'color' => '#fef08a'],
+        uniqid('tsk_') => ['title' => 'Congés Payés', 'desc' => 'Absence', 'itbm' => 'ITBM-ABS-000', 'color' => '#fecaca'],
+        uniqid('tsk_') => ['title' => 'Projet Migration', 'desc' => 'Build', 'itbm' => 'ITBM-PRJ-010', 'color' => '#bbf7d0']
     ];
     file_put_contents(FILE_TASKS, json_encode($defaultTasks, JSON_PRETTY_PRINT));
 }
@@ -26,25 +24,32 @@ if (!file_exists(FILE_TASKS)) {
 function getDb($file) { return json_decode(file_get_contents($file), true) ?: []; }
 function saveDb($file, $data) { file_put_contents($file, json_encode($data, JSON_PRETTY_PRINT)); }
 
-// Générateur de dates pour les saisies multiples
 function generateDatesList($start, $end, $mode, $selectedDays = []) {
     $dates = [];
     $begin = new DateTime($start);
     $endDt = new DateTime($end);
-    $endDt->modify('+1 day'); // Inclure le dernier jour
+    $endDt->modify('+1 day'); 
     
     $interval = new DateInterval('P1D');
     $daterange = new DatePeriod($begin, $interval, $endDt);
 
     foreach ($daterange as $date) {
-        $dayOfWeek = $date->format('N'); // 1 = Lundi, 7 = Dimanche
+        $dayOfWeek = $date->format('N'); 
         if ($mode === 'continue') {
-            if ($dayOfWeek < 6) $dates[] = $date->format('Y-m-d'); // Hors WE
+            if ($dayOfWeek < 6) $dates[] = $date->format('Y-m-d');
         } elseif ($mode === 'recurrence') {
             if (in_array($dayOfWeek, $selectedDays)) $dates[] = $date->format('Y-m-d');
         } else {
-            $dates[] = $date->format('Y-m-d'); // Mode unique (une seule date passée)
+            $dates[] = $date->format('Y-m-d');
         }
     }
     return $dates;
+}
+
+// Fonction pour déterminer les permissions de l'utilisateur courant
+function hasPermission($perm) {
+    if ($_SESSION['role'] === 'admin') return true;
+    $users = getDb(FILE_USERS);
+    $u = $users[$_SESSION['user_id']] ?? [];
+    return isset($u[$perm]) ? (bool)$u[$perm] : false; // Par défaut false si non défini
 }
