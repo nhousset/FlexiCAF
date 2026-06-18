@@ -40,7 +40,6 @@ if (!in_array($action, ['login', 'init_admin']) && !isset($_SESSION['user_id']))
 
 // Traitement : Saisie depuis le formulaire principal ou la modale d'allocation rapide
 if ($action === 'home' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['task_id'])) {
-    // Vérification des droits
     if (!hasPermission('can_saisie')) { die("Action non autorisée."); }
 
     $task_id = $_POST['task_id'];
@@ -51,7 +50,6 @@ if ($action === 'home' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST[
     $date_end = !empty($_POST['date_end']) ? $_POST['date_end'] : $date_start;
     $days = $_POST['days'] ?? [];
     
-    // Si la modale fournit un target_user (Admin/Manager ajoutant pour quelqu'un d'autre)
     $target_user_id = (!empty($_POST['target_user_id']) && $_SESSION['role'] === 'admin') ? $_POST['target_user_id'] : $_SESSION['user_id'];
 
     $datesToInsert = generateDatesList($date_start, $date_end, $saisie_mode, $days);
@@ -68,7 +66,6 @@ if ($action === 'home' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST[
     }
     saveDb(FILE_DATA, $data);
     
-    // Redirection pour conserver les filtres de vue actuels
     $redirect_url = '?action=home';
     if(isset($_GET['view'])) $redirect_url .= '&view='.$_GET['view'];
     if(isset($_GET['date'])) $redirect_url .= '&date='.$_GET['date'];
@@ -78,6 +75,7 @@ if ($action === 'home' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST[
 
 // Traitements Admin
 if ($action === 'admin' && $_SESSION['role'] === 'admin' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Création Utilisateur
     if (isset($_POST['add_user'])) {
         $users = getDb(FILE_USERS);
         $users[uniqid('usr_')] = [
@@ -89,6 +87,24 @@ if ($action === 'admin' && $_SESSION['role'] === 'admin' && $_SERVER['REQUEST_ME
         ];
         saveDb(FILE_USERS, $users);
     }
+    
+    // Modification Utilisateur
+    if (isset($_POST['edit_user'])) {
+        $users = getDb(FILE_USERS);
+        $uid = $_POST['user_id'];
+        if (isset($users[$uid])) {
+            $users[$uid]['name'] = $_POST['u_name'];
+            $users[$uid]['email'] = $_POST['u_email'];
+            if (!empty($_POST['u_pass'])) { // Ne modifie le mdp que s'il est renseigné
+                $users[$uid]['password'] = password_hash($_POST['u_pass'], PASSWORD_DEFAULT);
+            }
+            $users[$uid]['can_saisie'] = isset($_POST['u_can_saisie']);
+            $users[$uid]['can_dashboard'] = isset($_POST['u_can_dashboard']);
+            saveDb(FILE_USERS, $users);
+        }
+    }
+
+    // Création Tâche
     if (isset($_POST['add_task'])) {
         $tasks = getDb(FILE_TASKS);
         $tasks[uniqid('tsk_')] = [
