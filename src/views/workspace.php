@@ -1,0 +1,378 @@
+<?php
+$tasks = getDb(FILE_TASKS); 
+$allData = getDb(FILE_DATA);
+$allUsers = getDb(FILE_USERS);
+
+// Permissions courantes
+$canSaisie = hasPermission('can_saisie');
+$canDashboard = hasPermission('can_dashboard');
+
+// --------------------------------------------------------
+// MOTEUR DE NAVIGATION TEMPORELLE
+// --------------------------------------------------------
+$view_mode = $_GET['view'] ?? 'week'; // 'week' ou 'month'
+$anchor_date_str = $_GET['date'] ?? date('Y-m-d');
+$anchor_date = new DateTime($anchor_date_str);
+
+$plan_dates = [];
+$nav_prev = '';
+$nav_next = '';
+$display_period_text = '';
+
+if ($view_mode === 'week') {
+    // Vue Semaine (Lundi au Dimanche)
+    $start_date = clone $anchor_date;
+    $start_date->modify('Monday this week');
+    
+    $nav_prev = (clone $start_date)->modify('-1 week')->format('Y-m-d');
+    $nav_next = (clone $start_date)->modify('+1 week')->format('Y-m-d');
+    $display_period_text = "Semaine du " . $start_date->format('d/m/Y');
+
+    for($i=0; $i<7; $i++) {
+        $plan_dates[] = clone $start_date;
+        $start_date->modify('+1 day');
+    }
+} else {
+    // Vue Mois
+    $start_date = clone $anchor_date;
+    $start_date->modify('first day of this month');
+    $end_of_month = (clone $start_date)->modify('last day of this month');
+    
+    $nav_prev = (clone $start_date)->modify('-1 month')->format('Y-m-d');
+    $nav_next = (clone $start_date)->modify('+1 month')->format('Y-m-d');
+    $display_period_text = "Mois de " . $start_date->format('M Y'); // ex: Jun 2026
+
+    while($start_date <= $end_of_month) {
+        $plan_dates[] = clone $start_date;
+        $start_date->modify('+1 day');
+    }
+}
+
+// --------------------------------------------------------
+// PRÉPARATION DE LA GRILLE (Qui afficher ?)
+// --------------------------------------------------------
+$displayUsers = [];
+if ($_SESSION['role'] === 'admin' || $canDashboard) {
+    // Les managers ou admins voient toute l'équipe
+    if ($_SESSION['role'] === 'admin') $displayUsers['admin'] = 'Administrateur';
+    foreach($allUsers as $id => $u) $displayUsers[$id] = $u['name'];
+} else {
+    // Un utilisateur standard ne voit que lui
+    $displayUsers[$_SESSION['user_id']] = $_SESSION['name'];
+}
+
+$grid = [];
+foreach($displayUsers as $uid => $uname) {
+    $grid[$uid] = array_fill_keys(array_map(fn($d) => $d->format('Y-m-d'), $plan_dates), []);
+}
+
+foreach($allData as $e) {
+    $uid = $e['user_id'];
+    $date = $e['date'];
+    if (isset($grid[$uid][$date])) {
+        $grid[$uid][$date][] = $e;
+    }
+}
+
+// --------------------------------------------------------
+// CALCULS POUR LE DASHBOARD (Sur la période affichée)
+// --------------------------------------------------------
+$total_working_days = 0;
+foreach($plan_dates as $d) {
+    if(!in_array($d->format('N'), [6,7])) $total_working_days++;
+}
+$total_fte = count($displayUsers);
+$capacity_total_jours = $total_working_days * $total_fte;
+
+$consumed_jours = 0;
+foreach($displayUsers as $uid => $uname) {
+    foreach($plan_dates as $d) {
+        $dateStr = $d->format('Y-m-d');
+        $consumed_jours += array_sum(array_column($grid[$uid][$dateStr], 'valeur_j'));
+    }
+}
+$staffing_percent = $capacity_total_jours > 0 ? round(($consumed_jours / $capacity_total_jours) * 100) : 0;
+?>
+
+<div class="d-flex justify-content-between align-items-center mb-3 bg-white p-2 rounded shadow-sm border">
+    <div>
+        <a href="?action=home&view=<?= $view_mode ?>&date=<?= $nav_prev ?>" class="btn btn-sm btn-light border"><i class="bi bi-chevron-left"></i></a>
+        <a href="?action=home&view=<?= $view_mode ?>&date=<?= date('Y-m-d') ?>" class="btn btn-sm btn-light border mx-1">Aujourd'hui</a>
+        <a href="?action=home&view=<?= $view_mode ?>&date=<?= $nav_next ?>" class="btn btn-sm btn-light border"><i class="bi bi-chevron-right"></i></a>
+        <span class="ms-3 fw-bold text-dark"><i class="bi bi-calendar-event text-success"></i> <?= $display_period_text ?></span>
+    </div>
+    <div class="btn-group">
+        <a href="?action=home&view=week&date=<?= $anchor_date_str ?>" class="btn btn-sm <?= $view_mode === 'week' ? 'btn-success' : 'btn-outline-secondary' ?>">Semaine</a>
+        <a href="?action=home&view=month&date=<?= $anchor_date_str ?>" class="btn btn-sm <?= $view_mode === 'month' ? 'btn-success' : 'btn-outline-secondary' ?>">Mois</a>
+    </div>
+</div>
+
+<ul class="nav nav-tabs" id="viewTabs" role="tablist">
+  <li class="nav-item" role="presentation">
+    <button class="nav-link active" id="planning-tab" data-bs-toggle="tab" data-bs-target="#planning" type="button">Allocation Ressources</button>
+  </li>
+  <?php if($canSaisie): ?>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="saisie-tab" data-bs-toggle="tab" data-bs-target="#saisie" type="button">Ma Déclaration Avancée</button>
+  </li>
+  <?php endif; ?>
+  <?php if($canDashboard): ?>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="dashboard-tab" data-bs-toggle="tab" data-bs-target="#dashboard" type="button">Dashboard Global</button>
+  </li>
+  <?php endif; ?>
+</ul>
+
+<div class="tab-content" id="viewTabsContent">
+
+    <div class="tab-pane fade show active" id="planning" role="tabpanel">
+        <?php if(isset($_GET['success'])) echo "<div class='alert alert-success py-2 small'>Action enregistrée.</div>"; ?>
+        
+        <div class="planning-container">
+            <table class="table planning-table mb-0">
+                <thead>
+                    <tr>
+                        <th class="user-cell align-middle text-muted small text-uppercase ps-3">Équipe</th>
+                        <?php foreach($plan_dates as $d): 
+                            $isWeekend = in_array($d->format('N'), [6,7]);
+                            $isToday = $d->format('Y-m-d') === date('Y-m-d');
+                        ?>
+                            <th class="text-center day-cell <?= $isWeekend ? 'weekend' : '' ?>">
+                                <div class="small fw-bold text-uppercase" style="letter-spacing: 1px; color: <?= $isToday ? '#10b981' : '#64748b' ?>">
+                                    <?= substr(["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"][$d->format('w')], 0, 3) ?>
+                                </div>
+                                <div class="fs-5 <?= $isToday ? 'fw-bold text-success' : 'fw-light' ?>"><?= $d->format('d/m') ?></div>
+                            </th>
+                        <?php endforeach; ?>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach($displayUsers as $uid => $uname): ?>
+                    <tr>
+                        <td class="user-cell align-middle ps-3">
+                            <div class="d-flex align-items-center">
+                                <div class="bg-secondary text-white rounded-circle text-center me-2 shadow-sm" style="width:30px; height:30px; line-height:30px; font-weight:bold; font-size: 0.8rem;">
+                                    <?= strtoupper(substr($uname, 0, 1)) ?>
+                                </div>
+                                <span class="fw-bold text-dark small"><?= htmlspecialchars($uname) ?></span>
+                            </div>
+                        </td>
+                        <?php foreach($plan_dates as $d): 
+                            $dateStr = $d->format('Y-m-d');
+                            $dayTasks = $grid[$uid][$dateStr];
+                            $isWeekend = in_array($d->format('N'), [6,7]);
+                            $totalJ = array_sum(array_column($dayTasks, 'valeur_j'));
+                        ?>
+                            <td class="day-cell <?= $isWeekend ? 'weekend' : '' ?>">
+                                
+                                <?php if($totalJ > 0): ?>
+                                    <div class="d-flex justify-content-between mb-1 small fw-bold <?= $totalJ > 1.0 ? 'text-danger' : 'text-success' ?>" style="font-size: 0.65rem;">
+                                        <span class="text-uppercase text-muted">Total</span> 
+                                        <span><?= $totalJ ?>j <?= $totalJ > 1.0 ? '⚠️' : '' ?></span>
+                                    </div>
+                                <?php endif; ?>
+
+                                <?php foreach($dayTasks as $t): 
+                                    $taskDef = $tasks[$t['task_id']] ?? ['title'=>'Inconnu', 'color'=>'#e2e8f0'];
+                                ?>
+                                    <div class="task-block shadow-sm" style="background-color: <?= $taskDef['color'] ?>;">
+                                        <div class="task-title" title="<?= htmlspecialchars($taskDef['title']) ?>">
+                                            <?= htmlspecialchars($taskDef['title']) ?>
+                                        </div>
+                                        <div class="task-duration"><?= $t['valeur_j'] ?>j</div>
+                                    </div>
+                                <?php endforeach; ?>
+
+                                <?php if(($canSaisie || $_SESSION['role'] === 'admin') && !$isWeekend && $totalJ < 1.0): ?>
+                                    <div class="cell-add-btn" onclick="openFastModal('<?= $uid ?>', '<?= htmlspecialchars($uname) ?>', '<?= $dateStr ?>')">
+                                        <i class="bi bi-plus-circle-fill"></i> Add
+                                    </div>
+                                <?php endif; ?>
+
+                            </td>
+                        <?php endforeach; ?>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <?php if($canSaisie): ?>
+    <div class="tab-pane fade mt-4" id="saisie" role="tabpanel">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card shadow-sm border-success">
+                    <div class="card-header bg-success text-white">Déclarer des activités complexes (Congés, Récurrence)</div>
+                    <div class="card-body">
+                        <form method="POST">
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold">Activité / Projet</label>
+                                <select name="task_id" class="form-select" required>
+                                    <?php foreach($tasks as $id => $t): ?>
+                                        <option value="<?= $id ?>"><?= htmlspecialchars($t['title']) ?> (<?= htmlspecialchars($t['itbm']) ?>)</option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold">Type de planification</label>
+                                <select name="saisie_mode" id="saisieMode" class="form-select" onchange="toggleForm()">
+                                    <option value="unique">Journée unique</option>
+                                    <option value="continue">Période continue (hors WE)</option>
+                                    <option value="recurrence">Récurrence spécifique</option>
+                                </select>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-bold">Date de début</label>
+                                    <input type="date" name="date_start" class="form-control" value="<?= date('Y-m-d') ?>" required>
+                                </div>
+                                <div class="col-md-6 d-none" id="dateEndDiv">
+                                    <label class="form-label small fw-bold">Date de fin</label>
+                                    <input type="date" name="date_end" class="form-control">
+                                </div>
+                            </div>
+                            <div class="mb-3 d-none" id="daysDiv">
+                                <label class="form-label small fw-bold d-block">Jours concernés</label>
+                                <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" name="days[]" value="1"> <label class="form-check-label small">Lun</label></div>
+                                <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" name="days[]" value="2"> <label class="form-check-label small">Mar</label></div>
+                                <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" name="days[]" value="3"> <label class="form-check-label small">Mer</label></div>
+                                <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" name="days[]" value="4"> <label class="form-check-label small">Jeu</label></div>
+                                <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" name="days[]" value="5"> <label class="form-check-label small">Ven</label></div>
+                            </div>
+                            <div class="mb-4">
+                                <label class="form-label small fw-bold">Charge par jour</label>
+                                <select name="valeur" class="form-select">
+                                    <option value="1.0">1.0 jour (Journée complète)</option>
+                                    <option value="0.5" selected>0.5 jour (Demi-journée)</option>
+                                    <option value="0.25">0.25 jour (Quart)</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-success w-100"><i class="bi bi-save"></i> Enregistrer dans le plan de charge</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <?php if($canDashboard): ?>
+    <div class="tab-pane fade mt-4" id="dashboard" role="tabpanel">
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card shadow-sm border-0 bg-white">
+                    <div class="card-body text-center">
+                        <h6 class="text-muted fw-bold text-uppercase mb-1">Capacité Max Théorique</h6>
+                        <h2 class="text-dark mb-0"><?= $capacity_total_jours ?> Jours</h2>
+                        <small class="text-muted">Sur la période affichée (<?= $display_period_text ?>)</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card shadow-sm border-0 bg-white">
+                    <div class="card-body text-center">
+                        <h6 class="text-muted fw-bold text-uppercase mb-1">Charge Allouée</h6>
+                        <h2 class="text-primary mb-0"><?= $consumed_jours ?> Jours</h2>
+                        <small class="text-muted">Tâches planifiées</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card shadow-sm border-0 bg-white">
+                    <div class="card-body text-center">
+                        <h6 class="text-muted fw-bold text-uppercase mb-1">Staffing Équipe</h6>
+                        <h2 class="<?= $staffing_percent > 100 ? 'text-danger' : 'text-success' ?> mb-0"><?= $staffing_percent ?> %</h2>
+                        <div class="progress mt-2" style="height: 10px;">
+                            <div class="progress-bar <?= $staffing_percent > 100 ? 'bg-danger' : 'bg-success' ?>" role="progressbar" style="width: <?= min(100, $staffing_percent) ?>%;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+
+</div>
+
+<div class="modal fade" id="fastAddModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content">
+      <div class="modal-header bg-success text-white py-2">
+        <h6 class="modal-title mb-0">Nouvelle Allocation</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form method="POST" action="?action=home<?= isset($_GET['view']) ? '&view='.$_GET['view'] : '' ?><?= isset($_GET['date']) ? '&date='.$_GET['date'] : '' ?>">
+            <input type="hidden" name="saisie_mode" value="unique">
+            <input type="hidden" name="target_user_id" id="modal_uid" value="">
+            
+            <div class="mb-2 text-center text-muted small">
+                Consultant : <strong id="modal_uname" class="text-dark"></strong><br>
+                Date : <strong id="modal_date_display" class="text-dark"></strong>
+                <input type="hidden" name="date_start" id="modal_date" value="">
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label small fw-bold">Projet / Activité</label>
+                <select name="task_id" class="form-select form-select-sm" required>
+                    <?php foreach($tasks as $id => $t): ?>
+                        <option value="<?= $id ?>"><?= htmlspecialchars($t['title']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label small fw-bold">Charge</label>
+                <select name="valeur" class="form-select form-select-sm">
+                    <option value="1.0">1.0 j (Journée)</option>
+                    <option value="0.5" selected>0.5 j (Demi)</option>
+                    <option value="0.25">0.25 j (Quart)</option>
+                </select>
+            </div>
+            
+            <button type="submit" class="btn btn-success btn-sm w-100">Allouer</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+function toggleForm() {
+    const mode = document.getElementById('saisieMode').value;
+    const endDiv = document.getElementById('dateEndDiv');
+    const daysDiv = document.getElementById('daysDiv');
+    endDiv.classList.toggle('d-none', mode === 'unique');
+    daysDiv.classList.toggle('d-none', mode !== 'recurrence');
+}
+
+// Persistance des onglets Bootstrap
+document.addEventListener("DOMContentLoaded", function() {
+    let activeTab = localStorage.getItem('activeTab');
+    if (activeTab && document.querySelector(activeTab)) {
+        let tab = new bootstrap.Tab(document.querySelector(activeTab));
+        tab.show();
+    }
+    document.querySelectorAll('button[data-bs-toggle="tab"]').forEach(btn => {
+        btn.addEventListener('shown.bs.tab', function (e) {
+            localStorage.setItem('activeTab', '#' + e.target.id);
+        });
+    });
+});
+
+// Logique pour l'ouverture de la modale rapide
+function openFastModal(uid, uname, dateStr) {
+    document.getElementById('modal_uid').value = uid;
+    document.getElementById('modal_uname').innerText = uname;
+    document.getElementById('modal_date').value = dateStr;
+    
+    // Formatage date pour affichage FR
+    const d = new Date(dateStr);
+    document.getElementById('modal_date_display').innerText = d.toLocaleDateString('fr-FR');
+    
+    var myModal = new bootstrap.Modal(document.getElementById('fastAddModal'));
+    myModal.show();
+}
+</script>
