@@ -1,17 +1,45 @@
-body {
-    background-color: #f4f7f6;
-    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+/* ==========================================
+   VUE PLANNING (STYLE BONSAI)
+   ========================================== */
+.planning-container {
+    max-height: 75vh;
+    overflow-x: auto;
+    overflow-y: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    background: #fff;
 }
-.navbar-brand { font-weight: 700; letter-spacing: 0.5px; }
-.card {
-    border: none;
-    border-radius: 10px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-    margin-bottom: 20px;
+.planning-table { border-collapse: separate; border-spacing: 0; min-width: 100%; }
+.planning-table th, .planning-table td { border-bottom: 1px solid #dee2e6; border-right: 1px solid #dee2e6; }
+/* Colonne Utilisateur Sticky */
+.user-cell {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background-color: #f8f9fa;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.03);
+    min-width: 220px;
 }
-.card-header {
-    border-radius: 10px 10px 0 0 !important;
-    font-weight: 600;
+/* Entête Sticky */
+.planning-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background-color: #fff;
 }
-.table-hover tbody tr:hover { background-color: #f8f9fa; }
-.badge-itbm { background-color: #4a5568; font-family: monospace; }
+.planning-table thead th.user-cell { z-index: 3; background-color: #f8f9fa; }
+
+/* Bloc de Tâche */
+.task-block {
+    background-color: #e0f2fe; /* Bleu léger */
+    border-left: 4px solid #0284c7;
+    padding: 6px;
+    margin-bottom: 6px;
+    border-radius: 0 4px 4px 0;
+    font-size: 0.75rem;
+    color: #0c4a6e;
+    transition: transform 0.1s;
+}
+.task-block:hover { transform: scale(1.02); cursor: pointer; }
+.nav-tabs .nav-link { font-weight: 600; color: #6c757d; }
+.nav-tabs .nav-link.active { color: #0d6efd; border-bottom: 3px solid #0d6efd; border-radius: 0;}
