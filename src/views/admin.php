@@ -38,8 +38,7 @@
                 <hr class="mt-4">
                 <h6 class="fw-bold text-muted small text-uppercase">Comptes Actifs</h6>
                 <ul class="list-group list-group-flush small">
-                    <?php foreach(getDb(FILE_USERS) as $u): 
-                        // Compatibilité données antérieures
+                    <?php foreach(getDb(FILE_USERS) as $id => $u): 
                         $has_saisie = isset($u['can_saisie']) ? $u['can_saisie'] : true;
                         $has_dash = isset($u['can_dashboard']) ? $u['can_dashboard'] : false;
                     ?>
@@ -49,10 +48,56 @@
                                 <span class="text-muted" style="font-size:0.7rem;"><?= htmlspecialchars($u['email'] ?? 'Pas d\'email') ?></span>
                             </div>
                             <div class="text-end">
-                                <?php if($has_saisie): ?><span class="badge bg-success" title="Saisie Autorisée"><i class="bi bi-pencil"></i></span><?php endif; ?>
-                                <?php if($has_dash): ?><span class="badge bg-primary" title="Dashboard Autorisé"><i class="bi bi-bar-chart"></i></span><?php endif; ?>
+                                <?php if($has_saisie): ?><span class="badge bg-success me-1" title="Saisie Autorisée"><i class="bi bi-pencil"></i></span><?php endif; ?>
+                                <?php if($has_dash): ?><span class="badge bg-primary me-2" title="Dashboard Autorisé"><i class="bi bi-bar-chart"></i></span><?php endif; ?>
+                                
+                                <button class="btn btn-sm btn-outline-secondary py-0 px-1" data-bs-toggle="modal" data-bs-target="#editUserModal-<?= $id ?>" title="Modifier">
+                                    <i class="bi bi-gear-fill"></i>
+                                </button>
                             </div>
                         </li>
+
+                        <div class="modal fade" id="editUserModal-<?= $id ?>" tabindex="-1">
+                          <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content">
+                              <div class="modal-header bg-light py-2">
+                                <h6 class="modal-title mb-0">Modifier : <?= htmlspecialchars($u['name'] ?? '') ?></h6>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                              </div>
+                              <div class="modal-body">
+                                <form method="POST">
+                                    <input type="hidden" name="edit_user" value="1">
+                                    <input type="hidden" name="user_id" value="<?= $id ?>">
+                                    <div class="mb-2">
+                                        <label class="small fw-bold">Nom</label>
+                                        <input type="text" name="u_name" class="form-control form-control-sm" value="<?= htmlspecialchars($u['name'] ?? '') ?>" required>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="small fw-bold">Email</label>
+                                        <input type="email" name="u_email" class="form-control form-control-sm" value="<?= htmlspecialchars($u['email'] ?? '') ?>" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="small fw-bold">Nouveau mot de passe <span class="text-muted fw-normal">(laisser vide pour conserver)</span></label>
+                                        <input type="password" name="u_pass" class="form-control form-control-sm">
+                                    </div>
+                                    
+                                    <div class="bg-light p-2 mb-3 rounded border">
+                                        <div class="form-check form-switch">
+                                          <input class="form-check-input" type="checkbox" name="u_can_saisie" id="editSaisie-<?= $id ?>" <?= $has_saisie ? 'checked' : '' ?>>
+                                          <label class="form-check-label small" for="editSaisie-<?= $id ?>">Autoriser la Saisie</label>
+                                        </div>
+                                        <div class="form-check form-switch mt-1">
+                                          <input class="form-check-input" type="checkbox" name="u_can_dashboard" id="editDash-<?= $id ?>" <?= $has_dash ? 'checked' : '' ?>>
+                                          <label class="form-check-label small" for="editDash-<?= $id ?>">Autoriser le Dashboard</label>
+                                        </div>
+                                    </div>
+                                    
+                                    <button type="submit" class="btn btn-primary btn-sm w-100">Enregistrer les modifications</button>
+                                </form>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
                     <?php endforeach; ?>
                 </ul>
             </div>
@@ -95,7 +140,7 @@
                             ?>
                                 <tr>
                                     <td>
-                                        <div class="d-inline-block rounded me-2" style="width: 15px; height: 15px; background-color: <?= $color ?>; border: 1px solid rgba(0,0,0,0.1);"></div>
+                                        <div class="d-inline-block rounded me-2" style="width: 15px; height: 15px; background-color: <?= htmlspecialchars($color) ?>; border: 1px solid rgba(0,0,0,0.1);"></div>
                                         <strong><?= htmlspecialchars($t['title']) ?></strong>
                                     </td>
                                     <td class="text-end"><span class="badge badge-itbm"><?= htmlspecialchars($t['itbm']) ?></span></td>
