@@ -1,8 +1,10 @@
 <div class="row">
+    <!-- GESTION UTILISATEURS & PERMISSIONS -->
     <div class="col-md-6">
         <div class="card border-info shadow-sm">
             <div class="card-header bg-info text-white"><i class="bi bi-person-plus-fill"></i> Ajouter / Gérer les accès</div>
             <div class="card-body">
+                <!-- Formulaire de Création -->
                 <form method="POST">
                     <input type="hidden" name="add_user" value="1">
                     <div class="row">
@@ -21,14 +23,19 @@
                     </div>
                     
                     <div class="bg-light p-2 mb-3 rounded border">
-                        <label class="small fw-bold d-block mb-2 text-muted">Droits spécifiques au profil</label>
+                        <label class="small fw-bold d-block mb-2 text-muted">Droits et Paramètres</label>
                         <div class="form-check form-switch">
                           <input class="form-check-input" type="checkbox" name="u_can_saisie" id="canSaisie" checked>
-                          <label class="form-check-label small" for="canSaisie">Autoriser la Saisie (Déclaratif d'activité)</label>
+                          <label class="form-check-label small" for="canSaisie">Autoriser la Saisie</label>
                         </div>
                         <div class="form-check form-switch mt-1">
                           <input class="form-check-input" type="checkbox" name="u_can_dashboard" id="canDash">
-                          <label class="form-check-label small" for="canDash">Autoriser le Dashboard Manager (Vue Globale)</label>
+                          <label class="form-check-label small" for="canDash">Autoriser le Dashboard Manager</label>
+                        </div>
+                        <hr class="my-2">
+                        <div class="form-check form-switch mt-1">
+                          <input class="form-check-input" type="checkbox" name="u_is_excluded" id="isExcluded">
+                          <label class="form-check-label small text-danger" for="isExcluded">Masquer du Capacity Planning (Exclu)</label>
                         </div>
                     </div>
 
@@ -41,10 +48,13 @@
                     <?php foreach(getDb(FILE_USERS) as $id => $u): 
                         $has_saisie = isset($u['can_saisie']) ? $u['can_saisie'] : true;
                         $has_dash = isset($u['can_dashboard']) ? $u['can_dashboard'] : false;
+                        $is_excluded = isset($u['is_excluded']) ? $u['is_excluded'] : false;
                     ?>
                         <li class="list-group-item d-flex justify-content-between align-items-center px-0">
                             <div>
-                                <strong><?= htmlspecialchars($u['name'] ?? 'Inconnu') ?></strong><br>
+                                <strong><?= htmlspecialchars($u['name'] ?? 'Inconnu') ?></strong>
+                                <?php if($is_excluded): ?><span class="badge bg-danger ms-1" style="font-size:0.6rem;">Masqué</span><?php endif; ?>
+                                <br>
                                 <span class="text-muted" style="font-size:0.7rem;"><?= htmlspecialchars($u['email'] ?? 'Pas d\'email') ?></span>
                             </div>
                             <div class="text-end">
@@ -56,54 +66,13 @@
                                 </button>
                             </div>
                         </li>
-
-                        <div class="modal fade" id="editUserModal-<?= $id ?>" tabindex="-1">
-                          <div class="modal-dialog modal-dialog-centered">
-                            <div class="modal-content">
-                              <div class="modal-header bg-light py-2">
-                                <h6 class="modal-title mb-0">Modifier : <?= htmlspecialchars($u['name'] ?? '') ?></h6>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                              </div>
-                              <div class="modal-body">
-                                <form method="POST">
-                                    <input type="hidden" name="edit_user" value="1">
-                                    <input type="hidden" name="user_id" value="<?= $id ?>">
-                                    <div class="mb-2">
-                                        <label class="small fw-bold">Nom</label>
-                                        <input type="text" name="u_name" class="form-control form-control-sm" value="<?= htmlspecialchars($u['name'] ?? '') ?>" required>
-                                    </div>
-                                    <div class="mb-2">
-                                        <label class="small fw-bold">Email</label>
-                                        <input type="email" name="u_email" class="form-control form-control-sm" value="<?= htmlspecialchars($u['email'] ?? '') ?>" required>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label class="small fw-bold">Nouveau mot de passe <span class="text-muted fw-normal">(laisser vide pour conserver)</span></label>
-                                        <input type="password" name="u_pass" class="form-control form-control-sm">
-                                    </div>
-                                    
-                                    <div class="bg-light p-2 mb-3 rounded border">
-                                        <div class="form-check form-switch">
-                                          <input class="form-check-input" type="checkbox" name="u_can_saisie" id="editSaisie-<?= $id ?>" <?= $has_saisie ? 'checked' : '' ?>>
-                                          <label class="form-check-label small" for="editSaisie-<?= $id ?>">Autoriser la Saisie</label>
-                                        </div>
-                                        <div class="form-check form-switch mt-1">
-                                          <input class="form-check-input" type="checkbox" name="u_can_dashboard" id="editDash-<?= $id ?>" <?= $has_dash ? 'checked' : '' ?>>
-                                          <label class="form-check-label small" for="editDash-<?= $id ?>">Autoriser le Dashboard</label>
-                                        </div>
-                                    </div>
-                                    
-                                    <button type="submit" class="btn btn-primary btn-sm w-100">Enregistrer les modifications</button>
-                                </form>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
                     <?php endforeach; ?>
                 </ul>
             </div>
         </div>
     </div>
 
+    <!-- GESTION REFERENTIEL TACHES & COULEURS -->
     <div class="col-md-6">
         <div class="card border-secondary shadow-sm">
             <div class="card-header bg-secondary text-white"><i class="bi bi-tags-fill"></i> Catalogue des Activités</div>
@@ -153,3 +122,59 @@
         </div>
     </div>
 </div>
+
+<!-- ========================================== -->
+<!-- ZONES DES MODALES (En dehors de la boucle ul) -->
+<!-- ========================================== -->
+<?php foreach(getDb(FILE_USERS) as $id => $u): 
+    $has_saisie = isset($u['can_saisie']) ? $u['can_saisie'] : true;
+    $has_dash = isset($u['can_dashboard']) ? $u['can_dashboard'] : false;
+    $is_excluded = isset($u['is_excluded']) ? $u['is_excluded'] : false;
+?>
+<div class="modal fade" id="editUserModal-<?= $id ?>" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-light py-2">
+        <h6 class="modal-title mb-0">Modifier : <?= htmlspecialchars($u['name'] ?? '') ?></h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form method="POST">
+            <input type="hidden" name="edit_user" value="1">
+            <input type="hidden" name="user_id" value="<?= $id ?>">
+            <div class="mb-2">
+                <label class="small fw-bold">Nom</label>
+                <input type="text" name="u_name" class="form-control form-control-sm" value="<?= htmlspecialchars($u['name'] ?? '') ?>" required>
+            </div>
+            <div class="mb-2">
+                <label class="small fw-bold">Email</label>
+                <input type="email" name="u_email" class="form-control form-control-sm" value="<?= htmlspecialchars($u['email'] ?? '') ?>" required>
+            </div>
+            <div class="mb-3">
+                <label class="small fw-bold">Nouveau mot de passe <span class="text-muted fw-normal">(laisser vide pour conserver)</span></label>
+                <input type="password" name="u_pass" class="form-control form-control-sm">
+            </div>
+            
+            <div class="bg-light p-2 mb-3 rounded border">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" name="u_can_saisie" id="editSaisie-<?= $id ?>" <?= $has_saisie ? 'checked' : '' ?>>
+                  <label class="form-check-label small" for="editSaisie-<?= $id ?>">Autoriser la Saisie</label>
+                </div>
+                <div class="form-check form-switch mt-1">
+                  <input class="form-check-input" type="checkbox" name="u_can_dashboard" id="editDash-<?= $id ?>" <?= $has_dash ? 'checked' : '' ?>>
+                  <label class="form-check-label small" for="editDash-<?= $id ?>">Autoriser le Dashboard</label>
+                </div>
+                <hr class="my-2">
+                <div class="form-check form-switch mt-1">
+                  <input class="form-check-input" type="checkbox" name="u_is_excluded" id="editExcl-<?= $id ?>" <?= $is_excluded ? 'checked' : '' ?>>
+                  <label class="form-check-label small text-danger" for="editExcl-<?= $id ?>">Masquer du Capacity Planning</label>
+                </div>
+            </div>
+            
+            <button type="submit" class="btn btn-primary btn-sm w-100">Enregistrer les modifications</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+<?php endforeach; ?>
