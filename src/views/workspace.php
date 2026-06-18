@@ -10,7 +10,7 @@ $canDashboard = hasPermission('can_dashboard');
 // --------------------------------------------------------
 // MOTEUR DE NAVIGATION TEMPORELLE
 // --------------------------------------------------------
-$view_mode = $_GET['view'] ?? 'week'; // 'week' ou 'month'
+$view_mode = $_GET['view'] ?? 'week'; 
 $anchor_date_str = $_GET['date'] ?? date('Y-m-d');
 $anchor_date = new DateTime($anchor_date_str);
 
@@ -20,7 +20,6 @@ $nav_next = '';
 $display_period_text = '';
 
 if ($view_mode === 'week') {
-    // Vue Semaine (Lundi au Dimanche)
     $start_date = clone $anchor_date;
     $start_date->modify('Monday this week');
     
@@ -33,14 +32,13 @@ if ($view_mode === 'week') {
         $start_date->modify('+1 day');
     }
 } else {
-    // Vue Mois
     $start_date = clone $anchor_date;
     $start_date->modify('first day of this month');
     $end_of_month = (clone $start_date)->modify('last day of this month');
     
     $nav_prev = (clone $start_date)->modify('-1 month')->format('Y-m-d');
     $nav_next = (clone $start_date)->modify('+1 month')->format('Y-m-d');
-    $display_period_text = "Mois de " . $start_date->format('M Y'); // ex: Jun 2026
+    $display_period_text = "Mois de " . $start_date->format('M Y');
 
     while($start_date <= $end_of_month) {
         $plan_dates[] = clone $start_date;
@@ -49,15 +47,13 @@ if ($view_mode === 'week') {
 }
 
 // --------------------------------------------------------
-// PRÉPARATION DE LA GRILLE (Qui afficher ?)
+// PRÉPARATION DE LA GRILLE
 // --------------------------------------------------------
 $displayUsers = [];
 if ($_SESSION['role'] === 'admin' || $canDashboard) {
-    // Les managers ou admins voient toute l'équipe
     if ($_SESSION['role'] === 'admin') $displayUsers['admin'] = 'Administrateur';
     foreach($allUsers as $id => $u) $displayUsers[$id] = $u['name'];
 } else {
-    // Un utilisateur standard ne voit que lui
     $displayUsers[$_SESSION['user_id']] = $_SESSION['name'];
 }
 
@@ -75,7 +71,7 @@ foreach($allData as $e) {
 }
 
 // --------------------------------------------------------
-// CALCULS POUR LE DASHBOARD (Sur la période affichée)
+// CALCULS POUR LE DASHBOARD
 // --------------------------------------------------------
 $total_working_days = 0;
 foreach($plan_dates as $d) {
@@ -173,9 +169,11 @@ $staffing_percent = $capacity_total_jours > 0 ? round(($consumed_jours / $capaci
                                 <?php endif; ?>
 
                                 <?php foreach($dayTasks as $t): 
-                                    $taskDef = $tasks[$t['task_id']] ?? ['title'=>'Inconnu', 'color'=>'#e2e8f0'];
+                                    $taskDef = $tasks[$t['task_id']] ?? ['title'=>'Inconnu'];
+                                    // CORRECTION DU BUG DE COULEUR ICI :
+                                    $bgColor = htmlspecialchars($taskDef['color'] ?? '#e2e8f0');
                                 ?>
-                                    <div class="task-block shadow-sm" style="background-color: <?= $taskDef['color'] ?>;">
+                                    <div class="task-block shadow-sm" style="background-color: <?= $bgColor ?>;">
                                         <div class="task-title" title="<?= htmlspecialchars($taskDef['title']) ?>">
                                             <?= htmlspecialchars($taskDef['title']) ?>
                                         </div>
@@ -348,7 +346,6 @@ function toggleForm() {
     daysDiv.classList.toggle('d-none', mode !== 'recurrence');
 }
 
-// Persistance des onglets Bootstrap
 document.addEventListener("DOMContentLoaded", function() {
     let activeTab = localStorage.getItem('activeTab');
     if (activeTab && document.querySelector(activeTab)) {
@@ -362,13 +359,11 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 });
 
-// Logique pour l'ouverture de la modale rapide
 function openFastModal(uid, uname, dateStr) {
     document.getElementById('modal_uid').value = uid;
     document.getElementById('modal_uname').innerText = uname;
     document.getElementById('modal_date').value = dateStr;
     
-    // Formatage date pour affichage FR
     const d = new Date(dateStr);
     document.getElementById('modal_date_display').innerText = d.toLocaleDateString('fr-FR');
     
