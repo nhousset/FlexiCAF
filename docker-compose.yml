@@ -5,7 +5,7 @@ services:
     image: php:8.2-apache
     container_name: flexiCAF
     ports:
-      - "8080:80"
+      - "7000:80"
     volumes:
       # Code source de l'application
       - ./src:/var/www/html
