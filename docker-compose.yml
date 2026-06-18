@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  web:
+    image: php:8.2-apache
+    container_name: flexiCAF
+    ports:
+      - "8080:80"
+    volumes:
+      # Code source de l'application
+      - ./src:/var/www/html
+    restart: unless-stopped
