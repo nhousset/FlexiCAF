@@ -47,12 +47,17 @@ if ($view_mode === 'week') {
 }
 
 // --------------------------------------------------------
-// PRÉPARATION DE LA GRILLE
+// PRÉPARATION DE LA GRILLE & FILTRAGE EXCLUS
 // --------------------------------------------------------
 $displayUsers = [];
 if ($_SESSION['role'] === 'admin' || $canDashboard) {
     if ($_SESSION['role'] === 'admin') $displayUsers['admin'] = 'Administrateur';
-    foreach($allUsers as $id => $u) $displayUsers[$id] = $u['name'];
+    foreach($allUsers as $id => $u) {
+        // N'ajouter que les utilisateurs qui NE SONT PAS exclus
+        if (empty($u['is_excluded'])) {
+            $displayUsers[$id] = $u['name'];
+        }
+    }
 } else {
     $displayUsers[$_SESSION['user_id']] = $_SESSION['name'];
 }
@@ -71,7 +76,7 @@ foreach($allData as $e) {
 }
 
 // --------------------------------------------------------
-// CALCULS POUR LE DASHBOARD
+// CALCULS POUR LE DASHBOARD (HEATMAP KPI)
 // --------------------------------------------------------
 $total_working_days = 0;
 foreach($plan_dates as $d) {
@@ -90,6 +95,7 @@ foreach($displayUsers as $uid => $uname) {
 $staffing_percent = $capacity_total_jours > 0 ? round(($consumed_jours / $capacity_total_jours) * 100) : 0;
 ?>
 
+<!-- BARRE DE NAVIGATION TEMPORELLE -->
 <div class="d-flex justify-content-between align-items-center mb-3 bg-white p-2 rounded shadow-sm border">
     <div>
         <a href="?action=home&view=<?= $view_mode ?>&date=<?= $nav_prev ?>" class="btn btn-sm btn-light border"><i class="bi bi-chevron-left"></i></a>
@@ -103,6 +109,7 @@ $staffing_percent = $capacity_total_jours > 0 ? round(($consumed_jours / $capaci
     </div>
 </div>
 
+<!-- ONGLETS -->
 <ul class="nav nav-tabs" id="viewTabs" role="tablist">
   <li class="nav-item" role="presentation">
     <button class="nav-link active" id="planning-tab" data-bs-toggle="tab" data-bs-target="#planning" type="button">Allocation Ressources</button>
@@ -121,6 +128,7 @@ $staffing_percent = $capacity_total_jours > 0 ? round(($consumed_jours / $capaci
 
 <div class="tab-content" id="viewTabsContent">
 
+    <!-- ONGLET 1 : PLANNING DETAILLE -->
     <div class="tab-pane fade show active" id="planning" role="tabpanel">
         <?php if(isset($_GET['success'])) echo "<div class='alert alert-success py-2 small'>Action enregistrée.</div>"; ?>
         
@@ -170,7 +178,6 @@ $staffing_percent = $capacity_total_jours > 0 ? round(($consumed_jours / $capaci
 
                                 <?php foreach($dayTasks as $t): 
                                     $taskDef = $tasks[$t['task_id']] ?? ['title'=>'Inconnu'];
-                                    // CORRECTION DU BUG DE COULEUR ICI :
                                     $bgColor = htmlspecialchars($taskDef['color'] ?? '#e2e8f0');
                                 ?>
                                     <div class="task-block shadow-sm" style="background-color: <?= $bgColor ?>;">
@@ -196,6 +203,7 @@ $staffing_percent = $capacity_total_jours > 0 ? round(($consumed_jours / $capaci
         </div>
     </div>
 
+    <!-- ONGLET 2 : SAISIE AVANCÉE -->
     <?php if($canSaisie): ?>
     <div class="tab-pane fade mt-4" id="saisie" role="tabpanel">
         <div class="row justify-content-center">
@@ -255,15 +263,18 @@ $staffing_percent = $capacity_total_jours > 0 ? round(($consumed_jours / $capaci
     </div>
     <?php endif; ?>
 
+    <!-- ONGLET 3 : DASHBOARD MANAGER & HEATMAP -->
     <?php if($canDashboard): ?>
     <div class="tab-pane fade mt-4" id="dashboard" role="tabpanel">
-        <div class="row">
+        
+        <!-- KPI Globaux -->
+        <div class="row mb-4">
             <div class="col-md-4">
                 <div class="card shadow-sm border-0 bg-white">
                     <div class="card-body text-center">
                         <h6 class="text-muted fw-bold text-uppercase mb-1">Capacité Max Théorique</h6>
                         <h2 class="text-dark mb-0"><?= $capacity_total_jours ?> Jours</h2>
-                        <small class="text-muted">Sur la période affichée (<?= $display_period_text ?>)</small>
+                        <small class="text-muted">Sur la période affichée</small>
                     </div>
                 </div>
             </div>
@@ -288,11 +299,80 @@ $staffing_percent = $capacity_total_jours > 0 ? round(($consumed_jours / $capaci
                 </div>
             </div>
         </div>
+
+        <!-- TABLEAU HEATMAP (Style demandé) -->
+        <div class="planning-container shadow-sm border-0">
+            <table class="table planning-table mb-0 text-center align-middle">
+                <thead>
+                    <tr>
+                        <th class="user-cell align-middle text-muted small text-uppercase text-start ps-3">Membres Actifs</th>
+                        <?php foreach($plan_dates as $d): 
+                            $isWeekend = in_array($d->format('N'), [6,7]);
+                        ?>
+                            <th class="day-cell <?= $isWeekend ? 'weekend' : '' ?>" style="min-width: 80px; width: 80px;">
+                                <div class="small fw-bold text-uppercase text-muted" style="font-size: 0.65rem;">
+                                    <?= substr(["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"][$d->format('w')], 0, 3) ?>
+                                </div>
+                                <div class="fs-6 text-dark"><?= $d->format('d/m') ?></div>
+                            </th>
+                        <?php endforeach; ?>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach($displayUsers as $uid => $uname): ?>
+                    <tr>
+                        <td class="user-cell align-middle text-start ps-3">
+                            <div class="d-flex align-items-center">
+                                <div class="bg-dark text-white rounded-circle text-center me-2 shadow-sm" style="width:30px; height:30px; line-height:30px; font-weight:bold; font-size: 0.8rem;">
+                                    <?= strtoupper(substr($uname, 0, 1)) ?>
+                                </div>
+                                <span class="fw-bold text-dark small"><?= htmlspecialchars($uname) ?></span>
+                            </div>
+                        </td>
+                        <?php foreach($plan_dates as $d): 
+                            $dateStr = $d->format('Y-m-d');
+                            $dayTasks = $grid[$uid][$dateStr];
+                            $isWeekend = in_array($d->format('N'), [6,7]);
+                            $totalJ = array_sum(array_column($dayTasks, 'valeur_j'));
+                            
+                            // Logique de couleur (Heatmap)
+                            $perc = round($totalJ * 100);
+                            $bgStyle = '';
+                            $content = '';
+                            
+                            if ($isWeekend) {
+                                $bgStyle = 'background-color: #f8f9fa;'; // Gris clair standard
+                            } else {
+                                if ($perc == 0) {
+                                    $bgStyle = 'background-color: #ffffff;'; // Vide = Blanc
+                                } elseif ($perc > 0 && $perc < 100) {
+                                    $bgStyle = 'background-color: #a7f3d0; color: #065f46;'; // Vert clair
+                                    $content = $perc . '%';
+                                } elseif ($perc == 100) {
+                                    $bgStyle = 'background-color: #34d399; color: #064e3b; font-weight: bold;'; // Vert validé
+                                    $content = $perc . '%';
+                                } else {
+                                    $bgStyle = 'background-color: #fed7aa; color: #9a3412; font-weight: bold;'; // Orange Warning
+                                    $content = '<i class="bi bi-exclamation-triangle"></i><br>' . $perc . '%';
+                                }
+                            }
+                        ?>
+                            <td style="<?= $bgStyle ?> transition: background-color 0.2s;">
+                                <span style="font-size: 0.85rem;"><?= $content ?></span>
+                            </td>
+                        <?php endforeach; ?>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+        
     </div>
     <?php endif; ?>
 
 </div>
 
+<!-- MODALE D'ALLOCATION RAPIDE -->
 <div class="modal fade" id="fastAddModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered modal-sm">
     <div class="modal-content">
