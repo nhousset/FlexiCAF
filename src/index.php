@@ -84,31 +84,43 @@ if ($action === 'home' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST[
 // ---------------------------------------------------------
 if ($action === 'admin' && ($_SESSION['role'] === 'admin' || hasPermission('can_manage_tasks'))) {
     
-    // MOTEUR DE TELECHARGEMENT BACKUP (GET)
-    if (isset($_GET['download']) && $_SESSION['role'] === 'admin') {
-        $file_requested = basename($_GET['download']);
-        $allowed_files = ['users.json', 'tasks.json', 'data.json'];
-        
-        if (in_array($file_requested, $allowed_files)) {
-            $filepath = DIR_DB . $file_requested;
-            if (file_exists($filepath)) {
-                header('Content-Description: File Transfer');
-                header('Content-Type: application/json');
-                header('Content-Disposition: attachment; filename="backup_' . date('Ymd_His') . '_' . $file_requested . '"');
-                header('Expires: 0');
-                header('Cache-Control: must-revalidate');
-                header('Pragma: public');
-                header('Content-Length: ' . filesize($filepath));
-                readfile($filepath);
-                exit;
+    // MOTEUR DE TELECHARGEMENT BACKUP ZIP (GET)
+    if (isset($_GET['download_all']) && $_SESSION['role'] === 'admin') {
+        $zip = new ZipArchive();
+        $zipname = 'backup_' . date('Y-m-d') . '.zip';
+        $zip_path = sys_get_temp_dir() . '/' . $zipname;
+
+        if ($zip->open($zip_path, ZipArchive::CREATE | ZipArchive::OVERWRITE) === TRUE) {
+            // Liste exhaustive de la base de données
+            $files_to_zip = ['users.json', 'tasks.json', 'data.json', 'admin.json'];
+            
+            foreach ($files_to_zip as $file) {
+                $filepath = DIR_DB . $file;
+                if (file_exists($filepath)) {
+                    $zip->addFile($filepath, $file);
+                }
             }
+            $zip->close();
+
+            // Envoi du fichier au navigateur
+            header('Content-Type: application/zip');
+            header('Content-Disposition: attachment; filename="' . $zipname . '"');
+            header('Content-Length: ' . filesize($zip_path));
+            header('Pragma: no-cache');
+            header('Expires: 0');
+            readfile($zip_path);
+            
+            // Nettoyage du fichier temporaire du serveur
+            unlink($zip_path);
+            exit;
+        } else {
+            die("Erreur : Impossible de créer l'archive ZIP.");
         }
     }
 
     // TRAITEMENTS FORMULAIRES (POST)
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($_SESSION['role'] === 'admin') {
-            // Mode Classique : Ajout Utilisateur
             if (isset($_POST['add_user'])) {
                 $users = getDb(FILE_USERS);
                 $users[uniqid('usr_')] = [
@@ -122,7 +134,6 @@ if ($action === 'admin' && ($_SESSION['role'] === 'admin' || hasPermission('can_
                 saveDb(FILE_USERS, $users);
             }
             
-            // Mode Classique : Edition Utilisateur
             if (isset($_POST['edit_user'])) {
                 $users = getDb(FILE_USERS);
                 $uid = $_POST['user_id'];
@@ -138,7 +149,6 @@ if ($action === 'admin' && ($_SESSION['role'] === 'admin' || hasPermission('can_
                 }
             }
 
-            // Mode RAW JSON : Mise à jour globale Utilisateurs
             if (isset($_POST['update_users_json'])) {
                 $raw_json = trim($_POST['raw_users_json']);
                 $decoded = json_decode($raw_json, true);
@@ -151,7 +161,6 @@ if ($action === 'admin' && ($_SESSION['role'] === 'admin' || hasPermission('can_
             }
         }
 
-        // Mode Classique : Ajout Tâche
         if (isset($_POST['add_task'])) {
             $tasks = getDb(FILE_TASKS);
             $tasks[uniqid('tsk_')] = [
@@ -162,7 +171,6 @@ if ($action === 'admin' && ($_SESSION['role'] === 'admin' || hasPermission('can_
             header('Location: ?action=admin'); exit;
         }
 
-        // Mode RAW JSON : Mise à jour globale Tâches
         if (isset($_POST['update_tasks_json'])) {
             $raw_json = trim($_POST['raw_tasks_json']);
             $decoded = json_decode($raw_json, true);
