@@ -37,7 +37,7 @@ for ($i = 0; $i < 6; $i++) {
 }
 
 // --------------------------------------------------------
-// PRÉPARATION DES ACTEURS
+// PRÉPARATION DES ACTEURS (Avec Utilisateur Virtuel)
 // --------------------------------------------------------
 $displayUsers = [];
 if ($_SESSION['role'] === 'admin' || $canDashboard) {
@@ -45,8 +45,16 @@ if ($_SESSION['role'] === 'admin' || $canDashboard) {
     foreach($allUsers as $id => $u) {
         if (empty($u['is_excluded'])) $displayUsers[$id] = $u['name'];
     }
+    // Création de l'utilisateur virtuel pour la charge non affectée
+    $displayUsers['_virtual_unassigned_'] = 'Reste à planifier';
 } else {
     $displayUsers[$_SESSION['user_id']] = $_SESSION['name'];
+}
+
+// Calcul du nombre de VRAIS collaborateurs (pour la capacité équipe)
+$real_users_count = 0;
+foreach($displayUsers as $uid => $uname) {
+    if ($uid !== '_virtual_unassigned_') $real_users_count++;
 }
 
 // --------------------------------------------------------
@@ -65,31 +73,28 @@ foreach($tasks as $tid => $t) {
 }
 
 // --------------------------------------------------------
-// PRÉPARATION SPÉCIFIQUE : DÉTAIL CONSULTANT (Nouvel Onglet)
+// PRÉPARATION SPÉCIFIQUE : DÉTAIL CONSULTANT
 // --------------------------------------------------------
 $detail_uid = $_GET['detail_uid'] ?? $_SESSION['user_id'];
-// Sécurité : Un utilisateur normal ne peut voir que lui-même
 if ($_SESSION['role'] !== 'admin' && !$canDashboard) {
     $detail_uid = $_SESSION['user_id'];
 }
 $detail_uname = $displayUsers[$detail_uid] ?? 'Inconnu';
 
-// On regroupe les tâches par Type pour l'affichage
 $tasksByType = [];
 foreach($tasks as $tid => $t) {
     $type = $t['type'] ?? 'Technique';
     $tasksByType[$type][$tid] = $t;
 }
-ksort($tasksByType); // Tri alphabétique des types
+ksort($tasksByType); 
 
-// Grille de données pour le consultant ciblé
 $detail_grid = [];
 foreach($tasks as $tid => $t) {
     $detail_grid[$tid] = array_fill_keys(array_keys($dash_months), 0);
 }
 
 // --------------------------------------------------------
-// AGRÉGATION DES DONNÉES GLOBALES ET DÉTAILLÉES
+// AGRÉGATION DES DONNÉES
 // --------------------------------------------------------
 foreach($allData as $e) {
     $uid = $e['user_id'];
@@ -99,27 +104,37 @@ foreach($allData as $e) {
     $m_key = $dt->format('Y-m');
     
     if (isset($dash_months[$m_key])) {
-        // Alim des vues globales
         if (isset($displayUsers[$uid])) {
             $pivot_user_month[$uid][$m_key] += $e['valeur_j'];
             if(isset($pivot_task_month[$tid])) $pivot_task_month[$tid][$m_key] += $e['valeur_j'];
             if(isset($pivot_task_user[$tid][$uid])) $pivot_task_user[$tid][$uid] += $e['valeur_j'];
         }
         
-        // Alim de la vue détaillée Consultant
         if ($uid === $detail_uid && isset($detail_grid[$tid])) {
             $detail_grid[$tid][$m_key] += $e['valeur_j'];
         }
     }
 }
 
-function getMonthlyHeatmapStyle($valeur, $capacite_max) {
+// --------------------------------------------------------
+// MOTEUR DE COULEURS HEATMAP (Dégradé % et Utilisateur Virtuel)
+// --------------------------------------------------------
+function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
+    // Règle spéciale pour "Reste à planifier" (Pas de % car pas de capacité)
+    if ($is_virtual) {
+        if ($valeur == 0) return 'background-color: #f8f9fa; color: #adb5bd;';
+        return 'background-color: #f1f5f9; color: #334155; font-weight: bold; border: 1px dashed #94a3b8; box-shadow: inset 0 0 5px rgba(0,0,0,0.05);';
+    }
+    
     if ($valeur == 0) return 'background-color: #ffffff;';
     $perc = $capacite_max > 0 ? round(($valeur / $capacite_max) * 100) : 0;
     
-    if ($perc > 0 && $perc < 100) return 'background-color: #d1fae5; color: #065f46; border: 1px solid #a7f3d0;';
-    if ($perc == 100) return 'background-color: #34d399; color: #064e3b; font-weight: bold; border: 1px solid #10b981;';
-    return 'background-color: #fed7aa; color: #9a3412; font-weight: bold; box-shadow: inset 0 0 0 2px #f97316;';
+    // Dégradé de Vert à Rouge
+    if ($perc <= 60) return 'background-color: #d1fae5; color: #065f46; border: 1px solid #a7f3d0;'; // Vert très clair
+    if ($perc <= 90) return 'background-color: #34d399; color: #064e3b; font-weight: bold; border: 1px solid #10b981;'; // Vert validé
+    if ($perc <= 100) return 'background-color: #fde047; color: #854d0e; font-weight: bold; border: 1px solid #facc15;'; // Jaune (Alerte)
+    if ($perc <= 120) return 'background-color: #fb923c; color: #7c2d12; font-weight: bold; border: 1px solid #f97316;'; // Orange (Surcharge)
+    return 'background-color: #ef4444; color: #ffffff; font-weight: bold; box-shadow: inset 0 0 0 2px #b91c1c;'; // Rouge (Critique)
 }
 ?>
 
@@ -161,7 +176,7 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max) {
             <table class="table table-bordered table-hover text-center align-middle mb-0">
                 <thead class="table-light">
                     <tr>
-                        <th class="text-start text-muted text-uppercase small w-25">Ressources (<?= count($displayUsers) ?>)</th>
+                        <th class="text-start text-muted text-uppercase small w-25">Ressources (<?= $real_users_count ?> + Backlog)</th>
                         <?php foreach($dash_months as $m_key => $m_data): ?>
                             <th style="min-width: 120px;">
                                 <div class="fs-6 fw-bold text-dark"><?= $m_data['label'] ?></div>
@@ -171,25 +186,36 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max) {
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach($displayUsers as $uid => $uname): ?>
+                    <?php foreach($displayUsers as $uid => $uname): 
+                        $isVirtual = ($uid === '_virtual_unassigned_');
+                    ?>
                     <tr>
                         <td class="text-start">
                             <div class="d-flex align-items-center">
-                                <div class="bg-dark text-white rounded-circle text-center me-2" style="width:28px; height:28px; line-height:28px; font-weight:bold; font-size: 0.75rem;">
-                                    <?= strtoupper(substr($uname, 0, 1)) ?>
-                                </div>
-                                <span class="fw-bold text-dark small"><?= htmlspecialchars($uname) ?></span>
+                                <?php if($isVirtual): ?>
+                                    <div class="bg-warning text-dark rounded-circle text-center me-2 shadow-sm border border-dark" style="width:28px; height:28px; line-height:28px; font-weight:bold; font-size: 0.8rem;">
+                                        <i class="bi bi-inbox-fill"></i>
+                                    </div>
+                                    <span class="fw-bold text-dark small fst-italic"><?= htmlspecialchars($uname) ?></span>
+                                <?php else: ?>
+                                    <div class="bg-dark text-white rounded-circle text-center me-2" style="width:28px; height:28px; line-height:28px; font-weight:bold; font-size: 0.75rem;">
+                                        <?= strtoupper(substr($uname, 0, 1)) ?>
+                                    </div>
+                                    <span class="fw-bold text-dark small"><?= htmlspecialchars($uname) ?></span>
+                                <?php endif; ?>
                             </div>
                         </td>
                         <?php foreach($dash_months as $m_key => $m_data): 
                             $valeur = $pivot_user_month[$uid][$m_key];
                             $cap_max = $m_data['working_days'];
-                            $style = getMonthlyHeatmapStyle($valeur, $cap_max);
+                            $style = getMonthlyHeatmapStyle($valeur, $cap_max, $isVirtual);
                         ?>
                             <td style="<?= $style ?> position: relative; cursor: pointer;" onclick="openFastModal('<?= $uid ?>', '<?= htmlspecialchars($uname) ?>', '<?= $m_key ?>')">
                                 <?php if($valeur > 0): ?>
                                     <div class="fs-6"><?= $valeur ?> <small>JH</small></div>
-                                    <div style="font-size: 0.65rem; opacity: 0.8;"><?= round(($valeur/$cap_max)*100) ?>% Alloué</div>
+                                    <?php if(!$isVirtual): ?>
+                                        <div style="font-size: 0.65rem; opacity: 0.8;"><?= round(($valeur/$cap_max)*100) ?>% Alloué</div>
+                                    <?php endif; ?>
                                 <?php else: ?>
                                     <span class="text-muted" style="opacity: 0.3;">—</span>
                                 <?php endif; ?>
@@ -198,9 +224,27 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max) {
                     </tr>
                     <?php endforeach; ?>
                 </tbody>
+                <tfoot class="table-dark">
+                    <tr>
+                        <td class="text-end fw-bold align-middle">TOTAL ÉQUIPE (Charge / Capacité)</td>
+                        <?php foreach($dash_months as $m_key => $m_data): 
+                            $total_load = 0;
+                            foreach($displayUsers as $uid => $uname) {
+                                $total_load += $pivot_user_month[$uid][$m_key];
+                            }
+                            $total_cap = $m_data['working_days'] * $real_users_count;
+                            $perc = $total_cap > 0 ? round(($total_load / $total_cap) * 100) : 0;
+                            $style = getMonthlyHeatmapStyle($total_load, $total_cap, false);
+                        ?>
+                            <td style="<?= $style ?>">
+                                <div class="fs-6"><?= $total_load ?> JH</div>
+                                <div style="font-size: 0.65rem; opacity: 0.8;"><?= $perc ?>% (sur <?= $total_cap ?>)</div>
+                            </td>
+                        <?php endforeach; ?>
+                    </tr>
+                </tfoot>
             </table>
         </div>
-        <div class="mt-2 small text-muted"><i class="bi bi-info-circle"></i> Cliquez sur une cellule pour ajouter ou corriger rapidement la charge d'un consultant.</div>
     </div>
 
     <div class="tab-pane fade" id="vue-detail" role="tabpanel">
@@ -233,7 +277,6 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max) {
                 <tbody>
                     <?php 
                     foreach($tasksByType as $type => $groupTasks): 
-                        // On vérifie si ce groupe de tâches a au moins une valeur pour ce user pour éviter les sections vides
                         $hasDataInGroup = false;
                         foreach($groupTasks as $tid => $t) {
                             if(array_sum($detail_grid[$tid]) > 0) { $hasDataInGroup = true; break; }
@@ -244,7 +287,6 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max) {
                                 <i class="bi bi-collection"></i> <?= htmlspecialchars($type) ?>
                             </td>
                         </tr>
-
                         <?php foreach($groupTasks as $tid => $t): 
                             $color = htmlspecialchars($t['color'] ?? '#e2e8f0');
                         ?>
@@ -260,7 +302,6 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max) {
                             </td>
                             <?php foreach($dash_months as $m_key => $m_data): 
                                 $valeur = $detail_grid[$tid][$m_key];
-                                // Si Admin ou si c'est soi-même, on rend cliquable
                                 $isClickable = ($_SESSION['role'] === 'admin' || $canSaisie) ? "cursor: pointer;" : "";
                             ?>
                                 <td class="text-center" style="<?= $valeur > 0 ? 'background-color: #f0fdf4;' : '' ?> <?= $isClickable ?>" 
@@ -279,6 +320,24 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max) {
                         <?php endforeach; ?>
                     <?php endforeach; ?>
                 </tbody>
+                <tfoot class="table-dark text-center">
+                    <tr>
+                        <td class="text-end fw-bold align-middle">TOTAL AFFECTÉ (Ce profil)</td>
+                        <?php foreach($dash_months as $m_key => $m_data): 
+                            $total_load = $pivot_user_month[$detail_uid][$m_key];
+                            $cap_max = ($detail_uid === '_virtual_unassigned_') ? 0 : $m_data['working_days'];
+                            $perc = $cap_max > 0 ? round(($total_load / $cap_max) * 100) : 0;
+                            $style = getMonthlyHeatmapStyle($total_load, $cap_max, ($detail_uid === '_virtual_unassigned_'));
+                        ?>
+                            <td style="<?= $style ?>">
+                                <div class="fs-6"><?= $total_load ?> JH</div>
+                                <?php if($cap_max > 0): ?>
+                                    <div style="font-size: 0.65rem; opacity: 0.8;"><?= $perc ?>% (sur <?= $cap_max ?>)</div>
+                                <?php endif; ?>
+                            </td>
+                        <?php endforeach; ?>
+                    </tr>
+                </tfoot>
             </table>
         </div>
     </div>
@@ -331,6 +390,24 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max) {
                     </tr>
                     <?php endforeach; ?>
                 </tbody>
+                <tfoot class="table-dark text-center">
+                    <tr>
+                        <td class="text-end fw-bold align-middle">EFFORT TOTAL DÉPLOYÉ</td>
+                        <?php foreach($dash_months as $m_key => $m_data): 
+                            $total_load = 0;
+                            foreach($displayUsers as $uid => $uname) $total_load += $pivot_user_month[$uid][$m_key];
+                            
+                            $total_cap = $m_data['working_days'] * $real_users_count;
+                            $perc = $total_cap > 0 ? round(($total_load / $total_cap) * 100) : 0;
+                            $style = getMonthlyHeatmapStyle($total_load, $total_cap, false);
+                        ?>
+                            <td style="<?= $style ?>">
+                                <div class="fs-6"><?= $total_load ?> JH</div>
+                                <div style="font-size: 0.65rem; opacity: 0.8;"><?= $perc ?>% (sur <?= $total_cap ?>)</div>
+                            </td>
+                        <?php endforeach; ?>
+                    </tr>
+                </tfoot>
             </table>
         </div>
     </div>
@@ -375,6 +452,24 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max) {
                     </tr>
                     <?php endforeach; ?>
                 </tbody>
+                <tfoot class="table-dark">
+                    <tr>
+                        <td class="text-end fw-bold align-middle">TOTAL CUMULÉ (6 MOIS)</td>
+                        <?php foreach($displayUsers as $uid => $uname): 
+                            $total_load = array_sum(array_column($pivot_task_user, $uid));
+                            $total_cap_6m = ($uid === '_virtual_unassigned_') ? 0 : array_sum(array_column($dash_months, 'working_days'));
+                            $perc = $total_cap_6m > 0 ? round(($total_load / $total_cap_6m) * 100) : 0;
+                            $style = getMonthlyHeatmapStyle($total_load, $total_cap_6m, ($uid === '_virtual_unassigned_'));
+                        ?>
+                            <td style="<?= $style ?>">
+                                <div class="fs-6"><?= $total_load ?> JH</div>
+                                <?php if($total_cap_6m > 0): ?>
+                                    <div style="font-size: 0.65rem; opacity: 0.8;"><?= $perc ?>% (sur <?= $total_cap_6m ?>)</div>
+                                <?php endif; ?>
+                            </td>
+                        <?php endforeach; ?>
+                    </tr>
+                </tfoot>
             </table>
         </div>
     </div>
@@ -390,7 +485,7 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max) {
                             
                             <?php if ($_SESSION['role'] === 'admin'): ?>
                             <div class="mb-3">
-                                <label class="form-label small fw-bold text-primary"><i class="bi bi-person-fill"></i> Consultant ciblé (Mode Admin)</label>
+                                <label class="form-label small fw-bold text-primary"><i class="bi bi-person-fill"></i> Consultant ciblé</label>
                                 <select name="target_user_id" class="form-select border-primary" required>
                                     <?php foreach($displayUsers as $uid => $uname): ?>
                                         <option value="<?= $uid ?>" <?= $uid === $_SESSION['user_id'] ? 'selected' : '' ?>><?= htmlspecialchars($uname) ?></option>
@@ -523,31 +618,26 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 
 function openFastModal(uid, uname, monthKey, taskId = '') {
-    // Gestion du mois
     document.getElementById('modal_month').value = monthKey; 
     const parts = monthKey.split('-');
     const dateObj = new Date(parts[0], parts[1] - 1);
     const monthName = dateObj.toLocaleString('fr-FR', { month: 'long', year: 'numeric' });
     document.getElementById('modal_month_display').innerText = monthName.charAt(0).toUpperCase() + monthName.slice(1);
     
-    // Gestion de l'utilisateur (cas Admin qui clique depuis la vue projet)
     const unameDisplay = document.getElementById('modal_uname_display');
     const uidSelect = document.getElementById('modal_uid_select');
     const uidHidden = document.getElementById('modal_uid_hidden');
 
     if (uid) {
-        // Clic sur une cellule liée à un user spécifique
         unameDisplay.innerText = uname;
         unameDisplay.classList.remove('d-none');
         if(uidSelect) { uidSelect.value = uid; uidSelect.classList.add('d-none'); }
         if(uidHidden) uidHidden.value = uid;
     } else {
-        // Clic sur une cellule sans user (ex: Vue Projet globale par l'Admin)
         unameDisplay.classList.add('d-none');
         if(uidSelect) { uidSelect.classList.remove('d-none'); uidSelect.value = ''; }
     }
 
-    // Pré-sélection de la tâche si fournie
     const taskSelect = document.getElementById('modal_task_id');
     if (taskId) {
         taskSelect.value = taskId;
