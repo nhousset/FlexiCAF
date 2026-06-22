@@ -80,19 +80,24 @@ if ($action === 'home' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST[
 }
 
 // ---------------------------------------------------------
-// TRAITEMENTS ADMIN (Super-Admin & Admin des Tâches)
+// TRAITEMENTS ADMIN
 // ---------------------------------------------------------
 if ($action === 'admin' && ($_SESSION['role'] === 'admin' || hasPermission('can_manage_tasks'))) {
     
-    // MOTEUR DE TELECHARGEMENT BACKUP ZIP (GET)
+    // MOTEUR DE TELECHARGEMENT BACKUP ZIP
     if (isset($_GET['download_all']) && $_SESSION['role'] === 'admin') {
+        if (!class_exists('ZipArchive')) {
+            header('Location: ?action=admin&zip_error=1'); 
+            exit;
+        }
+
         $zip = new ZipArchive();
         $zipname = 'backup_' . date('Y-m-d') . '.zip';
         $zip_path = sys_get_temp_dir() . '/' . $zipname;
 
         if ($zip->open($zip_path, ZipArchive::CREATE | ZipArchive::OVERWRITE) === TRUE) {
-            // Liste exhaustive de la base de données
-            $files_to_zip = ['users.json', 'tasks.json', 'data.json', 'admin.json'];
+            // Ajout de settings.json à la sauvegarde globale
+            $files_to_zip = ['users.json', 'tasks.json', 'data.json', 'admin.json', 'settings.json'];
             
             foreach ($files_to_zip as $file) {
                 $filepath = DIR_DB . $file;
@@ -102,7 +107,6 @@ if ($action === 'admin' && ($_SESSION['role'] === 'admin' || hasPermission('can_
             }
             $zip->close();
 
-            // Envoi du fichier au navigateur
             header('Content-Type: application/zip');
             header('Content-Disposition: attachment; filename="' . $zipname . '"');
             header('Content-Length: ' . filesize($zip_path));
@@ -110,7 +114,6 @@ if ($action === 'admin' && ($_SESSION['role'] === 'admin' || hasPermission('can_
             header('Expires: 0');
             readfile($zip_path);
             
-            // Nettoyage du fichier temporaire du serveur
             unlink($zip_path);
             exit;
         } else {
@@ -118,9 +121,19 @@ if ($action === 'admin' && ($_SESSION['role'] === 'admin' || hasPermission('can_
         }
     }
 
-    // TRAITEMENTS FORMULAIRES (POST)
+    // TRAITEMENTS FORMULAIRES
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($_SESSION['role'] === 'admin') {
+            
+            // Paramètres globaux (Nom de l'app)
+            if (isset($_POST['update_settings'])) {
+                $settings = getDb(FILE_SETTINGS);
+                $settings['app_name'] = trim($_POST['app_name']);
+                if (empty($settings['app_name'])) $settings['app_name'] = 'FlexiCAF';
+                saveDb(FILE_SETTINGS, $settings);
+                header('Location: ?action=admin&settings_success=1'); exit;
+            }
+
             if (isset($_POST['add_user'])) {
                 $users = getDb(FILE_USERS);
                 $users[uniqid('usr_')] = [
