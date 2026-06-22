@@ -6,11 +6,15 @@ define('FILE_ADMIN', DIR_DB . 'admin.json');
 define('FILE_USERS', DIR_DB . 'users.json');
 define('FILE_TASKS', DIR_DB . 'tasks.json');
 define('FILE_DATA', DIR_DB . 'data.json');
+define('FILE_SETTINGS', DIR_DB . 'settings.json'); // NOUVEAU
 
 if (!is_dir(DIR_DB)) mkdir(DIR_DB, 0755, true);
 
+// Initialisations des fichiers par défaut
 if (!file_exists(FILE_USERS)) file_put_contents(FILE_USERS, json_encode([]));
 if (!file_exists(FILE_DATA)) file_put_contents(FILE_DATA, json_encode([]));
+if (!file_exists(FILE_SETTINGS)) file_put_contents(FILE_SETTINGS, json_encode(['app_name' => 'FlexiCAF'], JSON_PRETTY_PRINT));
+
 if (!file_exists(FILE_TASKS)) {
     $defaultTasks = [
         uniqid('tsk_') => ['title' => 'Run - Support N2/N3', 'type' => 'Technique', 'desc' => 'Résolution incidents', 'itbm' => 'ITBM-RUN-001', 'color' => '#bae6fd'],
