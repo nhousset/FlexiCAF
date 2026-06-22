@@ -71,7 +71,6 @@ if ($action === 'home' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST[
 // ---------------------------------------------------------
 if ($action === 'admin' && ($_SESSION['role'] === 'admin' || hasPermission('can_manage_tasks')) && $_SERVER['REQUEST_METHOD'] === 'POST') {
     
-    // Sécurité : Seul le Super-Admin peut gérer les utilisateurs
     if ($_SESSION['role'] === 'admin') {
         if (isset($_POST['add_user'])) {
             $users = getDb(FILE_USERS);
@@ -102,7 +101,7 @@ if ($action === 'admin' && ($_SESSION['role'] === 'admin' || hasPermission('can_
         }
     }
 
-    // Accessible au Super-Admin OU à l'Admin des tâches
+    // Ajout d'une tâche (Mode Classique)
     if (isset($_POST['add_task'])) {
         $tasks = getDb(FILE_TASKS);
         $tasks[uniqid('tsk_')] = [
@@ -113,8 +112,22 @@ if ($action === 'admin' && ($_SESSION['role'] === 'admin' || hasPermission('can_
             'color' => $_POST['t_color']
         ];
         saveDb(FILE_TASKS, $tasks);
+        header('Location: ?action=admin'); exit;
     }
-    header('Location: ?action=admin'); exit;
+
+    // Mise à jour globale (Mode RAW JSON)
+    if (isset($_POST['update_tasks_json'])) {
+        $raw_json = trim($_POST['raw_tasks_json']);
+        $decoded = json_decode($raw_json, true);
+        
+        // Sécurité : On vérifie que le JSON est valide avant d'écraser la base
+        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+            saveDb(FILE_TASKS, $decoded);
+            header('Location: ?action=admin&json_success=1'); exit;
+        } else {
+            header('Location: ?action=admin&json_error=1'); exit;
+        }
+    }
 }
 
 require 'includes/header.php';
