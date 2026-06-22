@@ -38,49 +38,44 @@ if (!in_array($action, ['login', 'init_admin']) && !isset($_SESSION['user_id']))
     header('Location: ?action=login'); exit;
 }
 
-// Traitement : Saisie depuis le formulaire principal ou la modale d'allocation rapide
+// ---------------------------------------------------------
+// TRAITEMENT : SAISIE MENSUELLE (Formulaire ou Modale Rapide)
+// ---------------------------------------------------------
 if ($action === 'home' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['task_id'])) {
     if (!hasPermission('can_saisie')) { die("Action non autorisée."); }
 
     $task_id = $_POST['task_id'];
     $valeur = floatval($_POST['valeur']);
-    $saisie_mode = $_POST['saisie_mode'] ?? 'unique';
+    $month_saisie = $_POST['month_saisie']; // Format attendu : YYYY-MM
     
-    $date_start = $_POST['date_start'];
-    $date_end = !empty($_POST['date_end']) ? $_POST['date_end'] : $date_start;
-    $days = $_POST['days'] ?? [];
+    // On enregistre virtuellement la charge au 1er du mois pour compatibilité des tris
+    $date_to_save = $month_saisie . '-01'; 
     
     $target_user_id = (!empty($_POST['target_user_id']) && $_SESSION['role'] === 'admin') ? $_POST['target_user_id'] : $_SESSION['user_id'];
 
-    $datesToInsert = generateDatesList($date_start, $date_end, $saisie_mode, $days);
-    
     $data = getDb(FILE_DATA);
-    foreach ($datesToInsert as $d) {
-        $data[] = [
-            'id' => uniqid('evt_'),
-            'user_id' => $target_user_id,
-            'task_id' => $task_id,
-            'date' => $d,
-            'valeur_j' => $valeur
-        ];
-    }
+    $data[] = [
+        'id' => uniqid('evt_'),
+        'user_id' => $target_user_id,
+        'task_id' => $task_id,
+        'date' => $date_to_save,
+        'valeur_j' => $valeur
+    ];
     saveDb(FILE_DATA, $data);
     
     $redirect_url = '?action=home';
-    if(isset($_GET['view'])) $redirect_url .= '&view='.$_GET['view'];
     if(isset($_GET['date'])) $redirect_url .= '&date='.$_GET['date'];
-    
     header("Location: $redirect_url&success=1"); exit;
 }
 
-// Traitements Admin
+// ---------------------------------------------------------
+// TRAITEMENTS ADMIN
+// ---------------------------------------------------------
 if ($action === 'admin' && $_SESSION['role'] === 'admin' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Création Utilisateur
     if (isset($_POST['add_user'])) {
         $users = getDb(FILE_USERS);
         $users[uniqid('usr_')] = [
-            'name' => $_POST['u_name'],
-            'email' => $_POST['u_email'],
+            'name' => $_POST['u_name'], 'email' => $_POST['u_email'],
             'password' => password_hash($_POST['u_pass'], PASSWORD_DEFAULT),
             'can_saisie' => isset($_POST['u_can_saisie']),
             'can_dashboard' => isset($_POST['u_can_dashboard']),
@@ -89,16 +84,13 @@ if ($action === 'admin' && $_SESSION['role'] === 'admin' && $_SERVER['REQUEST_ME
         saveDb(FILE_USERS, $users);
     }
     
-    // Modification Utilisateur
     if (isset($_POST['edit_user'])) {
         $users = getDb(FILE_USERS);
         $uid = $_POST['user_id'];
         if (isset($users[$uid])) {
             $users[$uid]['name'] = $_POST['u_name'];
             $users[$uid]['email'] = $_POST['u_email'];
-            if (!empty($_POST['u_pass'])) {
-                $users[$uid]['password'] = password_hash($_POST['u_pass'], PASSWORD_DEFAULT);
-            }
+            if (!empty($_POST['u_pass'])) $users[$uid]['password'] = password_hash($_POST['u_pass'], PASSWORD_DEFAULT);
             $users[$uid]['can_saisie'] = isset($_POST['u_can_saisie']);
             $users[$uid]['can_dashboard'] = isset($_POST['u_can_dashboard']);
             $users[$uid]['is_excluded'] = isset($_POST['u_is_excluded']);
@@ -106,7 +98,6 @@ if ($action === 'admin' && $_SESSION['role'] === 'admin' && $_SERVER['REQUEST_ME
         }
     }
 
-    // Création Tâche
     if (isset($_POST['add_task'])) {
         $tasks = getDb(FILE_TASKS);
         $tasks[uniqid('tsk_')] = [
