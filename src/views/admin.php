@@ -1,10 +1,8 @@
 <div class="row">
-    <!-- GESTION UTILISATEURS & PERMISSIONS -->
     <div class="col-md-6">
-        <div class="card border-info shadow-sm">
+        <div class="card border-info shadow-sm mb-4">
             <div class="card-header bg-info text-white"><i class="bi bi-person-plus-fill"></i> Ajouter / Gérer les accès</div>
             <div class="card-body">
-                <!-- Formulaire de Création -->
                 <form method="POST">
                     <input type="hidden" name="add_user" value="1">
                     <div class="row">
@@ -35,7 +33,7 @@
                         <hr class="my-2">
                         <div class="form-check form-switch mt-1">
                           <input class="form-check-input" type="checkbox" name="u_is_excluded" id="isExcluded">
-                          <label class="form-check-label small text-danger" for="isExcluded">Masquer du Capacity Planning (Exclu)</label>
+                          <label class="form-check-label small text-danger" for="isExcluded">Masquer du Capacity Planning</label>
                         </div>
                     </div>
 
@@ -72,28 +70,37 @@
         </div>
     </div>
 
-    <!-- GESTION REFERENTIEL TACHES & COULEURS -->
     <div class="col-md-6">
-        <div class="card border-secondary shadow-sm">
+        <div class="card border-secondary shadow-sm mb-4">
             <div class="card-header bg-secondary text-white"><i class="bi bi-tags-fill"></i> Catalogue des Activités</div>
             <div class="card-body">
                 <form method="POST">
                     <input type="hidden" name="add_task" value="1">
                     <div class="row">
-                        <div class="col-8 mb-2">
+                        <div class="col-6 mb-2">
                             <label class="small fw-bold">Titre affiché au planning</label>
                             <input type="text" name="t_title" class="form-control form-control-sm" required>
                         </div>
                         <div class="col-4 mb-2">
-                            <label class="small fw-bold">Couleur Label</label>
+                            <label class="small fw-bold">Type</label>
+                            <select name="t_type" class="form-select form-select-sm" required>
+                                <option value="Fonctionnel">Fonctionnel</option>
+                                <option value="Technique">Technique</option>
+                                <option value="Structure">Structure</option>
+                                <option value="Formation">Formation</option>
+                                <option value="Absences">Absences</option>
+                            </select>
+                        </div>
+                        <div class="col-2 mb-2">
+                            <label class="small fw-bold">Couleur</label>
                             <input type="color" name="t_color" class="form-control form-control-sm p-1" value="#bae6fd" style="height: 31px;">
                         </div>
-                        <div class="col-6 mb-2">
-                            <label class="small fw-bold">Code ITBM</label>
+                        <div class="col-4 mb-3">
+                            <label class="small fw-bold">Code Projet</label>
                             <input type="text" name="t_itbm" class="form-control form-control-sm" placeholder="PRJ-XXX" required>
                         </div>
-                        <div class="col-6 mb-3">
-                            <label class="small fw-bold">Description technique</label>
+                        <div class="col-8 mb-3">
+                            <label class="small fw-bold">Description courte</label>
                             <input type="text" name="t_desc" class="form-control form-control-sm">
                         </div>
                     </div>
@@ -106,11 +113,13 @@
                         <tbody>
                             <?php foreach(getDb(FILE_TASKS) as $t): 
                                 $color = $t['color'] ?? '#e2e8f0';
+                                $type = $t['type'] ?? 'Technique'; // Fallback pour les anciennes tâches
                             ?>
                                 <tr>
                                     <td>
                                         <div class="d-inline-block rounded me-2" style="width: 15px; height: 15px; background-color: <?= htmlspecialchars($color) ?>; border: 1px solid rgba(0,0,0,0.1);"></div>
                                         <strong><?= htmlspecialchars($t['title']) ?></strong>
+                                        <span class="badge bg-light text-dark border ms-1" style="font-size: 0.6rem;"><?= htmlspecialchars($type) ?></span>
                                     </td>
                                     <td class="text-end"><span class="badge badge-itbm"><?= htmlspecialchars($t['itbm']) ?></span></td>
                                 </tr>
@@ -123,9 +132,6 @@
     </div>
 </div>
 
-<!-- ========================================== -->
-<!-- ZONES DES MODALES (En dehors de la boucle ul) -->
-<!-- ========================================== -->
 <?php foreach(getDb(FILE_USERS) as $id => $u): 
     $has_saisie = isset($u['can_saisie']) ? $u['can_saisie'] : true;
     $has_dash = isset($u['can_dashboard']) ? $u['can_dashboard'] : false;
