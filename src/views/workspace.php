@@ -81,7 +81,6 @@ if ($_SESSION['role'] !== 'admin' && !$canDashboard) {
     $detail_uid = $_SESSION['user_id'];
 }
 
-// CORRECTION BUG WARNING : Si l'UID ciblé n'existe pas dans le tableau (ex: l'Admin), on prend le premier dispo
 if (!isset($displayUsers[$detail_uid])) {
     $keys = array_keys($displayUsers);
     $detail_uid = !empty($keys) ? $keys[0] : '';
@@ -130,22 +129,32 @@ foreach($allData as $e) {
 }
 
 // --------------------------------------------------------
-// MOTEUR DE COULEURS HEATMAP
+// MOTEUR DE COULEURS HEATMAP (Avec dégradés et volume)
 // --------------------------------------------------------
 function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
     if ($is_virtual) {
         if ($valeur == 0) return 'background-color: #f8f9fa; color: #adb5bd;';
-        return 'background-color: #f1f5f9; color: #334155; font-weight: bold; border: 1px dashed #94a3b8; box-shadow: inset 0 0 5px rgba(0,0,0,0.05);';
+        // Gris texturé pour le Reste à planifier
+        return 'background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); color: #334155; font-weight: bold; border: 1px dashed #94a3b8; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);';
     }
     
     if ($valeur == 0) return 'background-color: #ffffff;';
     $perc = $capacite_max > 0 ? round(($valeur / $capacite_max) * 100) : 0;
     
-    if ($perc <= 60) return 'background-color: #d1fae5; color: #065f46; border: 1px solid #a7f3d0;'; 
-    if ($perc <= 90) return 'background-color: #34d399; color: #064e3b; font-weight: bold; border: 1px solid #10b981;'; 
-    if ($perc <= 100) return 'background-color: #fde047; color: #854d0e; font-weight: bold; border: 1px solid #facc15;'; 
-    if ($perc <= 120) return 'background-color: #fb923c; color: #7c2d12; font-weight: bold; border: 1px solid #f97316;'; 
-    return 'background-color: #ef4444; color: #ffffff; font-weight: bold; box-shadow: inset 0 0 0 2px #b91c1c;'; 
+    if ($perc <= 60) {
+        // Vert très clair
+        return 'background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); color: #065f46; border: 1px solid #6ee7b7; box-shadow: inset 0 2px 4px rgba(255,255,255,0.5);'; 
+    }
+    if ($perc <= 90) {
+        // Vert validé
+        return 'background: linear-gradient(135deg, #34d399 0%, #10b981 100%); color: #022c22; font-weight: bold; border: 1px solid #059669; box-shadow: inset 0 2px 4px rgba(255,255,255,0.3);'; 
+    }
+    if ($perc <= 100) {
+        // Jaune / Orange (Alerte douce)
+        return 'background: linear-gradient(135deg, #fde047 0%, #facc15 100%); color: #713f12; font-weight: bold; border: 1px solid #eab308; box-shadow: inset 0 2px 4px rgba(255,255,255,0.4);'; 
+    }
+    // Strictement > 100% -> ROUGE VIF (Surcharge)
+    return 'background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: #ffffff; font-weight: bold; border: 1px solid #991b1b; box-shadow: inset 0 2px 4px rgba(255,255,255,0.2), 0 2px 5px rgba(239, 68, 68, 0.3); text-shadow: 0 1px 2px rgba(0,0,0,0.2);'; 
 }
 ?>
 
@@ -217,7 +226,7 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
                             </div>
                         </td>
                         <?php foreach($dash_months as $m_key => $m_data): 
-                            $valeur = $pivot_user_month[$uid][$m_key] ?? 0; // Sécurité rajoutée ici
+                            $valeur = $pivot_user_month[$uid][$m_key] ?? 0;
                             $cap_max = $m_data['working_days'];
                             $style = getMonthlyHeatmapStyle($valeur, $cap_max, $isVirtual);
                             
@@ -236,7 +245,7 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
                             }
                             $details_json = htmlspecialchars(json_encode($details_array), ENT_QUOTES, 'UTF-8');
                         ?>
-                            <td style="<?= $style ?> position: relative; cursor: pointer;" 
+                            <td style="<?= $style ?> position: relative; cursor: pointer; transition: all 0.2s;" 
                                 onclick="openDetailModal('<?= addslashes(htmlspecialchars($uname)) ?>', '<?= $m_key ?>', this)"
                                 data-details="<?= $details_json ?>">
                                 <?php if($valeur > 0): ?>
@@ -353,7 +362,6 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
                     <tr>
                         <td class="text-end fw-bold align-middle">TOTAL AFFECTÉ (Ce profil)</td>
                         <?php foreach($dash_months as $m_key => $m_data): 
-                            // Protection contre les index non définis (si l'UID était admin par exemple)
                             $total_load = $pivot_user_month[$detail_uid][$m_key] ?? 0;
                             $cap_max = ($detail_uid === '_virtual_unassigned_') ? 0 : $m_data['working_days'];
                             $perc = $cap_max > 0 ? round(($total_load / $cap_max) * 100) : 0;
@@ -729,7 +737,7 @@ function openDetailModal(uname, monthKey, cellElement) {
                 <tr>
                     <td class="text-start">
                         <div class="d-flex align-items-center">
-                            <div class="rounded me-2" style="width: 10px; height: 10px; background-color: ${d.color};"></div>
+                            <div class="rounded me-2" style="width: 10px; height: 10px; background-color: ${d.color}; border: 1px solid rgba(0,0,0,0.1);"></div>
                             <div>
                                 <div class="fw-bold text-dark small">${d.title}</div>
                                 <div class="text-muted" style="font-size: 0.6rem;"><span class="badge bg-light text-dark border">${typeUpper}</span></div>
