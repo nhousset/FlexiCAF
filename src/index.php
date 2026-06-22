@@ -39,35 +39,50 @@ if (!in_array($action, ['login', 'init_admin']) && !isset($_SESSION['user_id']))
 }
 
 // ---------------------------------------------------------
-// TRAITEMENT : SAISIE MENSUELLE
+// TRAITEMENT : SAISIE MENSUELLE (Ajout ou Remplacement)
 // ---------------------------------------------------------
 if ($action === 'home' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['task_id'])) {
-    if (!hasPermission('can_saisie')) { die("Action non autorisée."); }
+    if (!hasPermission('can_saisie') && $_SESSION['role'] !== 'admin') { die("Action non autorisée."); }
 
     $task_id = $_POST['task_id'];
-    $valeur = floatval($_POST['valeur']);
+    $valeur = floatval($_POST['valeur']); // Peut être 0 pour supprimer
     $month_saisie = $_POST['month_saisie']; 
+    $edit_mode = $_POST['edit_mode'] ?? 'add'; // 'replace' ou 'add'
     
     $date_to_save = $month_saisie . '-01'; 
     $target_user_id = (!empty($_POST['target_user_id']) && $_SESSION['role'] === 'admin') ? $_POST['target_user_id'] : $_SESSION['user_id'];
 
     $data = getDb(FILE_DATA);
-    $data[] = [
-        'id' => uniqid('evt_'),
-        'user_id' => $target_user_id,
-        'task_id' => $task_id,
-        'date' => $date_to_save,
-        'valeur_j' => $valeur
-    ];
+
+    // Si on est en mode "Remplacer", on supprime les entrées existantes pour ce mois/user/tâche
+    if ($edit_mode === 'replace') {
+        $data = array_filter($data, function($e) use ($target_user_id, $task_id, $date_to_save) {
+            return !($e['user_id'] === $target_user_id && $e['task_id'] === $task_id && $e['date'] === $date_to_save);
+        });
+        $data = array_values($data); // Ré-indexer le tableau
+    }
+
+    // On insère la nouvelle valeur uniquement si elle est > 0
+    if ($valeur > 0) {
+        $data[] = [
+            'id' => uniqid('evt_'),
+            'user_id' => $target_user_id,
+            'task_id' => $task_id,
+            'date' => $date_to_save,
+            'valeur_j' => $valeur
+        ];
+    }
+    
     saveDb(FILE_DATA, $data);
     
     $redirect_url = '?action=home';
     if(isset($_GET['date'])) $redirect_url .= '&date='.$_GET['date'];
+    if(isset($_GET['detail_uid'])) $redirect_url .= '&detail_uid='.$_GET['detail_uid'];
     header("Location: $redirect_url&success=1"); exit;
 }
 
 // ---------------------------------------------------------
-// TRAITEMENTS ADMIN (Super-Admin & Admin des Tâches)
+// TRAITEMENTS ADMIN
 // ---------------------------------------------------------
 if ($action === 'admin' && ($_SESSION['role'] === 'admin' || hasPermission('can_manage_tasks')) && $_SERVER['REQUEST_METHOD'] === 'POST') {
     
@@ -101,26 +116,19 @@ if ($action === 'admin' && ($_SESSION['role'] === 'admin' || hasPermission('can_
         }
     }
 
-    // Ajout d'une tâche (Mode Classique)
     if (isset($_POST['add_task'])) {
         $tasks = getDb(FILE_TASKS);
         $tasks[uniqid('tsk_')] = [
-            'title' => $_POST['t_title'], 
-            'type'  => $_POST['t_type'],
-            'desc'  => $_POST['t_desc'], 
-            'itbm'  => $_POST['t_itbm'], 
-            'color' => $_POST['t_color']
+            'title' => $_POST['t_title'], 'type' => $_POST['t_type'],
+            'desc'  => $_POST['t_desc'], 'itbm' => $_POST['t_itbm'], 'color' => $_POST['t_color']
         ];
         saveDb(FILE_TASKS, $tasks);
         header('Location: ?action=admin'); exit;
     }
 
-    // Mise à jour globale (Mode RAW JSON)
     if (isset($_POST['update_tasks_json'])) {
         $raw_json = trim($_POST['raw_tasks_json']);
         $decoded = json_decode($raw_json, true);
-        
-        // Sécurité : On vérifie que le JSON est valide avant d'écraser la base
         if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
             saveDb(FILE_TASKS, $decoded);
             header('Location: ?action=admin&json_success=1'); exit;
