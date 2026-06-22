@@ -1,4 +1,6 @@
 <div class="row">
+    
+    <?php if ($_SESSION['role'] === 'admin'): ?>
     <div class="col-md-6">
         <div class="card border-info shadow-sm mb-4">
             <div class="card-header bg-info text-white"><i class="bi bi-person-plus-fill"></i> Ajouter / Gérer les accès</div>
@@ -22,18 +24,38 @@
                     
                     <div class="bg-light p-2 mb-3 rounded border">
                         <label class="small fw-bold d-block mb-2 text-muted">Droits et Paramètres</label>
+                        
                         <div class="form-check form-switch">
                           <input class="form-check-input" type="checkbox" name="u_can_saisie" id="canSaisie" checked>
-                          <label class="form-check-label small" for="canSaisie">Autoriser la Saisie</label>
+                          <label class="form-check-label small" for="canSaisie">
+                              Autoriser la Saisie 
+                              <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-placement="right" title="L'utilisateur pourra déclarer de la charge (Jours-Hommes) sur le planning mensuel."></i>
+                          </label>
                         </div>
+                        
                         <div class="form-check form-switch mt-1">
                           <input class="form-check-input" type="checkbox" name="u_can_dashboard" id="canDash">
-                          <label class="form-check-label small" for="canDash">Autoriser le Dashboard Manager</label>
+                          <label class="form-check-label small" for="canDash">
+                              Autoriser le Dashboard Manager 
+                              <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-placement="right" title="Donne accès aux vues croisées (Projet/Consultant) et agrège les données de toute l'équipe."></i>
+                          </label>
                         </div>
+                        
+                        <div class="form-check form-switch mt-1">
+                          <input class="form-check-input" type="checkbox" name="u_can_manage_tasks" id="canManageTasks">
+                          <label class="form-check-label small" for="canManageTasks">
+                              Administrateur des activités 
+                              <i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="right" title="Permet d'accéder à l'espace Admin pour ajouter ou modifier les projets dans le Catalogue."></i>
+                          </label>
+                        </div>
+                        
                         <hr class="my-2">
                         <div class="form-check form-switch mt-1">
                           <input class="form-check-input" type="checkbox" name="u_is_excluded" id="isExcluded">
-                          <label class="form-check-label small text-danger" for="isExcluded">Masquer du Capacity Planning</label>
+                          <label class="form-check-label small text-danger" for="isExcluded">
+                              Masquer du Capacity Planning 
+                              <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-placement="right" title="Idéal pour les comptes managers purs : l'utilisateur n'apparaîtra plus dans les tableaux d'allocation (Heatmap)."></i>
+                          </label>
                         </div>
                     </div>
 
@@ -46,6 +68,7 @@
                     <?php foreach(getDb(FILE_USERS) as $id => $u): 
                         $has_saisie = isset($u['can_saisie']) ? $u['can_saisie'] : true;
                         $has_dash = isset($u['can_dashboard']) ? $u['can_dashboard'] : false;
+                        $has_tasks_admin = isset($u['can_manage_tasks']) ? $u['can_manage_tasks'] : false;
                         $is_excluded = isset($u['is_excluded']) ? $u['is_excluded'] : false;
                     ?>
                         <li class="list-group-item d-flex justify-content-between align-items-center px-0">
@@ -57,7 +80,8 @@
                             </div>
                             <div class="text-end">
                                 <?php if($has_saisie): ?><span class="badge bg-success me-1" title="Saisie Autorisée"><i class="bi bi-pencil"></i></span><?php endif; ?>
-                                <?php if($has_dash): ?><span class="badge bg-primary me-2" title="Dashboard Autorisé"><i class="bi bi-bar-chart"></i></span><?php endif; ?>
+                                <?php if($has_dash): ?><span class="badge bg-primary me-1" title="Dashboard Autorisé"><i class="bi bi-bar-chart"></i></span><?php endif; ?>
+                                <?php if($has_tasks_admin): ?><span class="badge bg-dark me-2" title="Admin Activités"><i class="bi bi-tags-fill"></i></span><?php endif; ?>
                                 
                                 <button class="btn btn-sm btn-outline-secondary py-0 px-1" data-bs-toggle="modal" data-bs-target="#editUserModal-<?= $id ?>" title="Modifier">
                                     <i class="bi bi-gear-fill"></i>
@@ -69,8 +93,9 @@
             </div>
         </div>
     </div>
+    <?php endif; ?>
 
-    <div class="col-md-6">
+    <div class="col-md-<?= ($_SESSION['role'] === 'admin') ? '6' : '12' ?>">
         <div class="card border-secondary shadow-sm mb-4">
             <div class="card-header bg-secondary text-white"><i class="bi bi-tags-fill"></i> Catalogue des Activités</div>
             <div class="card-body">
@@ -113,7 +138,7 @@
                         <tbody>
                             <?php foreach(getDb(FILE_TASKS) as $t): 
                                 $color = $t['color'] ?? '#e2e8f0';
-                                $type = $t['type'] ?? 'Technique'; // Fallback pour les anciennes tâches
+                                $type = $t['type'] ?? 'Technique';
                             ?>
                                 <tr>
                                     <td>
@@ -132,10 +157,14 @@
     </div>
 </div>
 
-<?php foreach(getDb(FILE_USERS) as $id => $u): 
-    $has_saisie = isset($u['can_saisie']) ? $u['can_saisie'] : true;
-    $has_dash = isset($u['can_dashboard']) ? $u['can_dashboard'] : false;
-    $is_excluded = isset($u['is_excluded']) ? $u['is_excluded'] : false;
+<?php 
+// Rendu des modales uniquement pour le Super-Admin
+if ($_SESSION['role'] === 'admin'): 
+    foreach(getDb(FILE_USERS) as $id => $u): 
+        $has_saisie = isset($u['can_saisie']) ? $u['can_saisie'] : true;
+        $has_dash = isset($u['can_dashboard']) ? $u['can_dashboard'] : false;
+        $has_tasks_admin = isset($u['can_manage_tasks']) ? $u['can_manage_tasks'] : false;
+        $is_excluded = isset($u['is_excluded']) ? $u['is_excluded'] : false;
 ?>
 <div class="modal fade" id="editUserModal-<?= $id ?>" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
@@ -168,7 +197,11 @@
                 </div>
                 <div class="form-check form-switch mt-1">
                   <input class="form-check-input" type="checkbox" name="u_can_dashboard" id="editDash-<?= $id ?>" <?= $has_dash ? 'checked' : '' ?>>
-                  <label class="form-check-label small" for="editDash-<?= $id ?>">Autoriser le Dashboard</label>
+                  <label class="form-check-label small" for="editDash-<?= $id ?>">Autoriser le Dashboard Manager</label>
+                </div>
+                <div class="form-check form-switch mt-1">
+                  <input class="form-check-input" type="checkbox" name="u_can_manage_tasks" id="editTasks-<?= $id ?>" <?= $has_tasks_admin ? 'checked' : '' ?>>
+                  <label class="form-check-label small" for="editTasks-<?= $id ?>">Administrateur des activités</label>
                 </div>
                 <hr class="my-2">
                 <div class="form-check form-switch mt-1">
@@ -183,4 +216,17 @@
     </div>
   </div>
 </div>
-<?php endforeach; ?>
+<?php 
+    endforeach; 
+endif; 
+?>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+</script>
