@@ -45,13 +45,11 @@ if ($_SESSION['role'] === 'admin' || $canDashboard) {
     foreach($allUsers as $id => $u) {
         if (empty($u['is_excluded'])) $displayUsers[$id] = $u['name'];
     }
-    // Création de l'utilisateur virtuel pour la charge non affectée
     $displayUsers['_virtual_unassigned_'] = 'Reste à planifier';
 } else {
     $displayUsers[$_SESSION['user_id']] = $_SESSION['name'];
 }
 
-// Calcul du nombre de VRAIS collaborateurs (pour la capacité équipe)
 $real_users_count = 0;
 foreach($displayUsers as $uid => $uname) {
     if ($uid !== '_virtual_unassigned_') $real_users_count++;
@@ -63,9 +61,11 @@ foreach($displayUsers as $uid => $uname) {
 $pivot_user_month = [];
 $pivot_task_month = [];
 $pivot_task_user  = [];
+$breakdown_user_month_task = []; // Nouveau tableau pour le détail de la modale
 
 foreach($displayUsers as $uid => $uname) {
     $pivot_user_month[$uid] = array_fill_keys(array_keys($dash_months), 0);
+    $breakdown_user_month_task[$uid] = array_fill_keys(array_keys($dash_months), []);
     foreach($tasks as $tid => $t) $pivot_task_user[$tid][$uid] = 0;
 }
 foreach($tasks as $tid => $t) {
@@ -108,6 +108,12 @@ foreach($allData as $e) {
             $pivot_user_month[$uid][$m_key] += $e['valeur_j'];
             if(isset($pivot_task_month[$tid])) $pivot_task_month[$tid][$m_key] += $e['valeur_j'];
             if(isset($pivot_task_user[$tid][$uid])) $pivot_task_user[$tid][$uid] += $e['valeur_j'];
+            
+            // Stockage du détail pour la modale Vue 1
+            if (!isset($breakdown_user_month_task[$uid][$m_key][$tid])) {
+                $breakdown_user_month_task[$uid][$m_key][$tid] = 0;
+            }
+            $breakdown_user_month_task[$uid][$m_key][$tid] += $e['valeur_j'];
         }
         
         if ($uid === $detail_uid && isset($detail_grid[$tid])) {
@@ -117,10 +123,9 @@ foreach($allData as $e) {
 }
 
 // --------------------------------------------------------
-// MOTEUR DE COULEURS HEATMAP (Dégradé % et Utilisateur Virtuel)
+// MOTEUR DE COULEURS HEATMAP
 // --------------------------------------------------------
 function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
-    // Règle spéciale pour "Reste à planifier" (Pas de % car pas de capacité)
     if ($is_virtual) {
         if ($valeur == 0) return 'background-color: #f8f9fa; color: #adb5bd;';
         return 'background-color: #f1f5f9; color: #334155; font-weight: bold; border: 1px dashed #94a3b8; box-shadow: inset 0 0 5px rgba(0,0,0,0.05);';
@@ -129,12 +134,11 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
     if ($valeur == 0) return 'background-color: #ffffff;';
     $perc = $capacite_max > 0 ? round(($valeur / $capacite_max) * 100) : 0;
     
-    // Dégradé de Vert à Rouge
-    if ($perc <= 60) return 'background-color: #d1fae5; color: #065f46; border: 1px solid #a7f3d0;'; // Vert très clair
-    if ($perc <= 90) return 'background-color: #34d399; color: #064e3b; font-weight: bold; border: 1px solid #10b981;'; // Vert validé
-    if ($perc <= 100) return 'background-color: #fde047; color: #854d0e; font-weight: bold; border: 1px solid #facc15;'; // Jaune (Alerte)
-    if ($perc <= 120) return 'background-color: #fb923c; color: #7c2d12; font-weight: bold; border: 1px solid #f97316;'; // Orange (Surcharge)
-    return 'background-color: #ef4444; color: #ffffff; font-weight: bold; box-shadow: inset 0 0 0 2px #b91c1c;'; // Rouge (Critique)
+    if ($perc <= 60) return 'background-color: #d1fae5; color: #065f46; border: 1px solid #a7f3d0;'; 
+    if ($perc <= 90) return 'background-color: #34d399; color: #064e3b; font-weight: bold; border: 1px solid #10b981;'; 
+    if ($perc <= 100) return 'background-color: #fde047; color: #854d0e; font-weight: bold; border: 1px solid #facc15;'; 
+    if ($perc <= 120) return 'background-color: #fb923c; color: #7c2d12; font-weight: bold; border: 1px solid #f97316;'; 
+    return 'background-color: #ef4444; color: #ffffff; font-weight: bold; box-shadow: inset 0 0 0 2px #b91c1c;'; 
 }
 ?>
 
@@ -209,8 +213,26 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
                             $valeur = $pivot_user_month[$uid][$m_key];
                             $cap_max = $m_data['working_days'];
                             $style = getMonthlyHeatmapStyle($valeur, $cap_max, $isVirtual);
+                            
+                            // Préparation des données détaillées pour la Modale d'info
+                            $details_array = [];
+                            if (isset($breakdown_user_month_task[$uid][$m_key])) {
+                                foreach($breakdown_user_month_task[$uid][$m_key] as $tid => $val) {
+                                    if ($val > 0) {
+                                        $details_array[] = [
+                                            'title' => $tasks[$tid]['title'] ?? 'Inconnu',
+                                            'type' => $tasks[$tid]['type'] ?? 'Technique',
+                                            'color' => $tasks[$tid]['color'] ?? '#e2e8f0',
+                                            'val' => $val
+                                        ];
+                                    }
+                                }
+                            }
+                            $details_json = htmlspecialchars(json_encode($details_array), ENT_QUOTES, 'UTF-8');
                         ?>
-                            <td style="<?= $style ?> position: relative; cursor: pointer;" onclick="openFastModal('<?= $uid ?>', '<?= htmlspecialchars($uname) ?>', '<?= $m_key ?>')">
+                            <td style="<?= $style ?> position: relative; cursor: pointer;" 
+                                onclick="openDetailModal('<?= addslashes(htmlspecialchars($uname)) ?>', '<?= $m_key ?>', this)"
+                                data-details="<?= $details_json ?>">
                                 <?php if($valeur > 0): ?>
                                     <div class="fs-6"><?= $valeur ?> <small>JH</small></div>
                                     <?php if(!$isVirtual): ?>
@@ -245,6 +267,7 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
                 </tfoot>
             </table>
         </div>
+        <div class="mt-2 small text-muted"><i class="bi bi-info-circle"></i> Cliquez sur une cellule pour consulter le détail des affectations de ce mois.</div>
     </div>
 
     <div class="tab-pane fade" id="vue-detail" role="tabpanel">
@@ -482,7 +505,6 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
                     <div class="card-header bg-success text-white"><i class="bi bi-pencil-square"></i> Déclarer une charge manuellement</div>
                     <div class="card-body">
                         <form method="POST">
-                            
                             <?php if ($_SESSION['role'] === 'admin'): ?>
                             <div class="mb-3">
                                 <label class="form-label small fw-bold text-primary"><i class="bi bi-person-fill"></i> Consultant ciblé</label>
@@ -602,6 +624,35 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
   </div>
 </div>
 
+<div class="modal fade" id="detailModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-info text-white py-2">
+        <h6 class="modal-title mb-0"><i class="bi bi-list-task"></i> Détail des affectations du mois</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body bg-light">
+        <div class="text-center mb-3">
+            <div class="fw-bold text-dark fs-5" id="detail_modal_uname"></div>
+            <div class="badge bg-secondary fs-6" id="detail_modal_month_display"></div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered align-middle bg-white shadow-sm">
+                <thead class="table-light text-center small">
+                    <tr><th class="text-start">Projet / Activité</th><th style="width: 100px;">Charge</th></tr>
+                </thead>
+                <tbody id="detail_modal_body">
+                    </tbody>
+                <tfoot class="table-light text-center fw-bold">
+                    <tr><td class="text-end">TOTAL DU MOIS</td><td id="detail_modal_total" class="text-primary"></td></tr>
+                </tfoot>
+            </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function() {
@@ -646,6 +697,47 @@ function openFastModal(uid, uname, monthKey, taskId = '') {
     }
     
     var myModal = new bootstrap.Modal(document.getElementById('fastAddModal'));
+    myModal.show();
+}
+
+// Logique de la nouvelle modale de consultation (Vue 1)
+function openDetailModal(uname, monthKey, cellElement) {
+    const parts = monthKey.split('-');
+    const dateObj = new Date(parts[0], parts[1] - 1);
+    const monthName = dateObj.toLocaleString('fr-FR', { month: 'long', year: 'numeric' });
+    document.getElementById('detail_modal_month_display').innerText = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+    document.getElementById('detail_modal_uname').innerText = uname;
+
+    const detailsRaw = cellElement.getAttribute('data-details');
+    const tbody = document.getElementById('detail_modal_body');
+    tbody.innerHTML = '';
+    let total = 0;
+
+    if (detailsRaw && detailsRaw !== '[]') {
+        const details = JSON.parse(detailsRaw);
+        details.forEach(d => {
+            total += d.val;
+            tbody.innerHTML += `
+                <tr>
+                    <td class="text-start">
+                        <div class="d-flex align-items-center">
+                            <div class="rounded me-2" style="width: 10px; height: 10px; background-color: ${d.color};"></div>
+                            <div>
+                                <div class="fw-bold text-dark small">${d.title}</div>
+                                <div class="text-muted" style="font-size: 0.6rem;"><span class="badge bg-light text-dark border">${d.type}</span></div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="text-center fw-bold">${d.val} JH</td>
+                </tr>
+            `;
+        });
+    } else {
+        tbody.innerHTML = '<tr><td colspan="2" class="text-center text-muted small py-3">Aucune charge affectée ce mois-ci.</td></tr>';
+    }
+    document.getElementById('detail_modal_total').innerText = total + ' JH';
+
+    var myModal = new bootstrap.Modal(document.getElementById('detailModal'));
     myModal.show();
 }
 </script>
