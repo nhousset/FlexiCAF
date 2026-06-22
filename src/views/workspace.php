@@ -37,17 +37,19 @@ for ($i = 0; $i < 6; $i++) {
 }
 
 // --------------------------------------------------------
-// PRÉPARATION DES ACTEURS (Avec Utilisateur Virtuel)
+// PRÉPARATION DES ACTEURS (Noms en Majuscules & Sans Admin)
 // --------------------------------------------------------
 $displayUsers = [];
 if ($_SESSION['role'] === 'admin' || $canDashboard) {
-    if ($_SESSION['role'] === 'admin') $displayUsers['admin'] = 'Administrateur';
+    // L'administrateur n'est plus ajouté à la liste des consultants
     foreach($allUsers as $id => $u) {
-        if (empty($u['is_excluded'])) $displayUsers[$id] = $u['name'];
+        if (empty($u['is_excluded'])) {
+            $displayUsers[$id] = mb_strtoupper($u['name'], 'UTF-8');
+        }
     }
-    $displayUsers['_virtual_unassigned_'] = 'Reste à planifier';
+    $displayUsers['_virtual_unassigned_'] = 'RESTE À PLANIFIER';
 } else {
-    $displayUsers[$_SESSION['user_id']] = $_SESSION['name'];
+    $displayUsers[$_SESSION['user_id']] = mb_strtoupper($_SESSION['name'], 'UTF-8');
 }
 
 $real_users_count = 0;
@@ -61,7 +63,7 @@ foreach($displayUsers as $uid => $uname) {
 $pivot_user_month = [];
 $pivot_task_month = [];
 $pivot_task_user  = [];
-$breakdown_user_month_task = []; // Nouveau tableau pour le détail de la modale
+$breakdown_user_month_task = []; 
 
 foreach($displayUsers as $uid => $uname) {
     $pivot_user_month[$uid] = array_fill_keys(array_keys($dash_months), 0);
@@ -79,7 +81,7 @@ $detail_uid = $_GET['detail_uid'] ?? $_SESSION['user_id'];
 if ($_SESSION['role'] !== 'admin' && !$canDashboard) {
     $detail_uid = $_SESSION['user_id'];
 }
-$detail_uname = $displayUsers[$detail_uid] ?? 'Inconnu';
+$detail_uname = $displayUsers[$detail_uid] ?? 'INCONNU';
 
 $tasksByType = [];
 foreach($tasks as $tid => $t) {
@@ -109,7 +111,6 @@ foreach($allData as $e) {
             if(isset($pivot_task_month[$tid])) $pivot_task_month[$tid][$m_key] += $e['valeur_j'];
             if(isset($pivot_task_user[$tid][$uid])) $pivot_task_user[$tid][$uid] += $e['valeur_j'];
             
-            // Stockage du détail pour la modale Vue 1
             if (!isset($breakdown_user_month_task[$uid][$m_key][$tid])) {
                 $breakdown_user_month_task[$uid][$m_key][$tid] = 0;
             }
@@ -175,6 +176,8 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
 
 <div class="tab-content bg-white border border-top-0 p-3 rounded-bottom shadow-sm" id="viewTabsContent">
 
+    <!-- ========================================================================================= -->
+    <!-- VUE 1 : CONSULTANT / MOIS -->
     <div class="tab-pane fade show active" id="vue1" role="tabpanel">
         <div class="table-responsive">
             <table class="table table-bordered table-hover text-center align-middle mb-0">
@@ -203,7 +206,7 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
                                     <span class="fw-bold text-dark small fst-italic"><?= htmlspecialchars($uname) ?></span>
                                 <?php else: ?>
                                     <div class="bg-dark text-white rounded-circle text-center me-2" style="width:28px; height:28px; line-height:28px; font-weight:bold; font-size: 0.75rem;">
-                                        <?= strtoupper(substr($uname, 0, 1)) ?>
+                                        <?= mb_strtoupper(mb_substr($uname, 0, 1, 'UTF-8'), 'UTF-8') ?>
                                     </div>
                                     <span class="fw-bold text-dark small"><?= htmlspecialchars($uname) ?></span>
                                 <?php endif; ?>
@@ -214,7 +217,6 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
                             $cap_max = $m_data['working_days'];
                             $style = getMonthlyHeatmapStyle($valeur, $cap_max, $isVirtual);
                             
-                            // Préparation des données détaillées pour la Modale d'info
                             $details_array = [];
                             if (isset($breakdown_user_month_task[$uid][$m_key])) {
                                 foreach($breakdown_user_month_task[$uid][$m_key] as $tid => $val) {
@@ -270,6 +272,8 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
         <div class="mt-2 small text-muted"><i class="bi bi-info-circle"></i> Cliquez sur une cellule pour consulter le détail des affectations de ce mois.</div>
     </div>
 
+    <!-- ========================================================================================= -->
+    <!-- VUE DÉTAIL CONSULTANT -->
     <div class="tab-pane fade" id="vue-detail" role="tabpanel">
         
         <?php if ($_SESSION['role'] === 'admin' || $canDashboard): ?>
@@ -307,7 +311,7 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
                     ?>
                         <tr class="table-secondary">
                             <td colspan="7" class="fw-bold text-uppercase" style="letter-spacing: 1px; font-size: 0.8rem;">
-                                <i class="bi bi-collection"></i> <?= htmlspecialchars($type) ?>
+                                <i class="bi bi-collection"></i> <?= mb_strtoupper(htmlspecialchars($type), 'UTF-8') ?>
                             </td>
                         </tr>
                         <?php foreach($groupTasks as $tid => $t): 
@@ -365,6 +369,8 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
         </div>
     </div>
 
+    <!-- ========================================================================================= -->
+    <!-- VUE 2 : PROJET / MOIS -->
     <div class="tab-pane fade" id="vue2" role="tabpanel">
         <div class="table-responsive">
             <table class="table table-bordered table-hover align-middle mb-0">
@@ -389,7 +395,7 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
                                 <div>
                                     <div class="fw-bold text-dark small"><?= htmlspecialchars($t['title']) ?></div>
                                     <div class="text-muted" style="font-size: 0.65rem;">
-                                        <span class="badge bg-light text-dark border me-1"><?= $type ?></span>
+                                        <span class="badge bg-light text-dark border me-1"><?= mb_strtoupper($type, 'UTF-8') ?></span>
                                         <?= htmlspecialchars($t['itbm']) ?>
                                     </div>
                                 </div>
@@ -435,6 +441,8 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
         </div>
     </div>
 
+    <!-- ========================================================================================= -->
+    <!-- VUE 3 : PROJET / CONSULTANT -->
     <div class="tab-pane fade" id="vue3" role="tabpanel">
         <div class="alert alert-light border small py-2 mb-3">
             <i class="bi bi-info-square"></i> Cette vue agrège l'effort total (en JH) de chaque consultant sur la période affichée (les 6 mois).
@@ -461,7 +469,7 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
                                 <div class="rounded me-2" style="width: 12px; height: 12px; background-color: <?= $color ?>;"></div>
                                 <div>
                                     <span class="fw-bold text-dark small d-block"><?= htmlspecialchars($t['title']) ?></span>
-                                    <span class="badge bg-light text-dark border" style="font-size: 0.55rem;"><?= $type ?></span>
+                                    <span class="badge bg-light text-dark border" style="font-size: 0.55rem;"><?= mb_strtoupper($type, 'UTF-8') ?></span>
                                 </div>
                             </div>
                         </td>
@@ -497,6 +505,8 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
         </div>
     </div>
 
+    <!-- ========================================================================================= -->
+    <!-- VUE 4 : SAISIE MANUELLE LIBRE -->
     <?php if($canSaisie): ?>
     <div class="tab-pane fade mt-3" id="saisie" role="tabpanel">
         <div class="row justify-content-center">
@@ -505,6 +515,7 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
                     <div class="card-header bg-success text-white"><i class="bi bi-pencil-square"></i> Déclarer une charge manuellement</div>
                     <div class="card-body">
                         <form method="POST">
+                            
                             <?php if ($_SESSION['role'] === 'admin'): ?>
                             <div class="mb-3">
                                 <label class="form-label small fw-bold text-primary"><i class="bi bi-person-fill"></i> Consultant ciblé</label>
@@ -524,7 +535,7 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
                                         $type = htmlspecialchars($t['type'] ?? 'Technique');
                                     ?>
                                         <option value="<?= $id ?>">
-                                            [<?= $type ?>] <?= htmlspecialchars($t['title']) ?> (<?= htmlspecialchars($t['itbm']) ?>)
+                                            [<?= mb_strtoupper($type, 'UTF-8') ?>] <?= htmlspecialchars($t['title']) ?> (<?= htmlspecialchars($t['itbm']) ?>)
                                         </option>
                                     <?php endforeach; ?>
                                 </select>
@@ -563,6 +574,7 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
 
 </div>
 
+<!-- MODALE D'AFFECTATION RAPIDE -->
 <div class="modal fade" id="fastAddModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered modal-sm">
     <div class="modal-content">
@@ -597,7 +609,7 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
                     <?php foreach($tasks as $id => $t): 
                         $type = htmlspecialchars($t['type'] ?? 'Technique');
                     ?>
-                        <option value="<?= $id ?>">[<?= $type ?>] <?= htmlspecialchars($t['title']) ?></option>
+                        <option value="<?= $id ?>">[<?= mb_strtoupper($type, 'UTF-8') ?>] <?= htmlspecialchars($t['title']) ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
@@ -624,6 +636,7 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
   </div>
 </div>
 
+<!-- NOUVELLE MODALE : DÉTAIL D'AFFECTATION (Vue 1) -->
 <div class="modal fade" id="detailModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
@@ -642,7 +655,7 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
                     <tr><th class="text-start">Projet / Activité</th><th style="width: 100px;">Charge</th></tr>
                 </thead>
                 <tbody id="detail_modal_body">
-                    </tbody>
+                </tbody>
                 <tfoot class="table-light text-center fw-bold">
                     <tr><td class="text-end">TOTAL DU MOIS</td><td id="detail_modal_total" class="text-primary"></td></tr>
                 </tfoot>
@@ -700,7 +713,6 @@ function openFastModal(uid, uname, monthKey, taskId = '') {
     myModal.show();
 }
 
-// Logique de la nouvelle modale de consultation (Vue 1)
 function openDetailModal(uname, monthKey, cellElement) {
     const parts = monthKey.split('-');
     const dateObj = new Date(parts[0], parts[1] - 1);
@@ -717,6 +729,8 @@ function openDetailModal(uname, monthKey, cellElement) {
         const details = JSON.parse(detailsRaw);
         details.forEach(d => {
             total += d.val;
+            // Transformation du type en MAJ pour affichage propre
+            const typeUpper = d.type.toUpperCase();
             tbody.innerHTML += `
                 <tr>
                     <td class="text-start">
@@ -724,7 +738,7 @@ function openDetailModal(uname, monthKey, cellElement) {
                             <div class="rounded me-2" style="width: 10px; height: 10px; background-color: ${d.color};"></div>
                             <div>
                                 <div class="fw-bold text-dark small">${d.title}</div>
-                                <div class="text-muted" style="font-size: 0.6rem;"><span class="badge bg-light text-dark border">${d.type}</span></div>
+                                <div class="text-muted" style="font-size: 0.6rem;"><span class="badge bg-light text-dark border">${typeUpper}</span></div>
                             </div>
                         </div>
                     </td>
