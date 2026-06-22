@@ -41,6 +41,9 @@ for ($i = 0; $i < 6; $i++) {
 // --------------------------------------------------------
 $displayUsers = [];
 if ($_SESSION['role'] === 'admin' || $canDashboard) {
+    // CORRECTION : On réintègre l'Admin dans le tableau pour qu'il voie ses propres saisies
+    if ($_SESSION['role'] === 'admin') $displayUsers['admin'] = 'Administrateur';
+    
     foreach($allUsers as $id => $u) {
         if (empty($u['is_excluded'])) $displayUsers[$id] = $u['name'];
     }
@@ -268,6 +271,18 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max) {
                     <div class="card-header bg-success text-white"><i class="bi bi-pencil-square"></i> Déclarer une charge mensuelle</div>
                     <div class="card-body">
                         <form method="POST">
+                            
+                            <?php if ($_SESSION['role'] === 'admin'): ?>
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold text-primary"><i class="bi bi-person-fill"></i> Consultant ciblé (Mode Admin)</label>
+                                <select name="target_user_id" class="form-select border-primary" required>
+                                    <?php foreach($displayUsers as $uid => $uname): ?>
+                                        <option value="<?= $uid ?>" <?= $uid === $_SESSION['user_id'] ? 'selected' : '' ?>><?= htmlspecialchars($uname) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <?php endif; ?>
+
                             <div class="mb-3">
                                 <label class="form-label small fw-bold">Projet / Activité ciblé</label>
                                 <select name="task_id" class="form-select" required>
