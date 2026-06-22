@@ -215,8 +215,15 @@
                             <div class="alert alert-danger small py-2"><i class="bi bi-exclamation-triangle-fill"></i> <strong>Erreur de syntaxe JSON.</strong> L'enregistrement a été annulé.</div>
                         <?php endif; ?>
 
-                        <div class="alert alert-warning small py-2">
-                            <i class="bi bi-exclamation-circle-fill"></i> <strong>Mode Expert :</strong> Modifiez directement la structure de données. Assurez-vous que le format JSON soit strictement valide.
+                        <div class="alert alert-light border small py-2 mb-3">
+                            <h6 class="fw-bold mb-2"><i class="bi bi-info-circle-fill text-warning"></i> Guide des propriétés JSON :</h6>
+                            <ul class="mb-0 ps-3">
+                                <li><code>title</code> : Titre affiché au planning (Texte).</li>
+                                <li><code>type</code> : Catégorie (Texte : <em>Fonctionnel, Technique, Structure, Formation, Absences</em>).</li>
+                                <li><code>color</code> : Code couleur au format hexadécimal (Texte : ex. <code>#bae6fd</code>).</li>
+                                <li><code>itbm</code> : Code Projet ou référence interne (Texte).</li>
+                                <li><code>desc</code> : Description courte ou note (Texte).</li>
+                            </ul>
                         </div>
 
                         <form method="POST">
