@@ -41,9 +41,7 @@ for ($i = 0; $i < 6; $i++) {
 // --------------------------------------------------------
 $displayUsers = [];
 if ($_SESSION['role'] === 'admin' || $canDashboard) {
-    // CORRECTION : On réintègre l'Admin dans le tableau pour qu'il voie ses propres saisies
     if ($_SESSION['role'] === 'admin') $displayUsers['admin'] = 'Administrateur';
-    
     foreach($allUsers as $id => $u) {
         if (empty($u['is_excluded'])) $displayUsers[$id] = $u['name'];
     }
@@ -52,7 +50,7 @@ if ($_SESSION['role'] === 'admin' || $canDashboard) {
 }
 
 // --------------------------------------------------------
-// INITIALISATION DES 3 VUES
+// INITIALISATION DES VUES CROISÉES
 // --------------------------------------------------------
 $pivot_user_month = [];
 $pivot_task_month = [];
@@ -67,20 +65,51 @@ foreach($tasks as $tid => $t) {
 }
 
 // --------------------------------------------------------
-// AGRÉGATION DES DONNÉES
+// PRÉPARATION SPÉCIFIQUE : DÉTAIL CONSULTANT (Nouvel Onglet)
+// --------------------------------------------------------
+$detail_uid = $_GET['detail_uid'] ?? $_SESSION['user_id'];
+// Sécurité : Un utilisateur normal ne peut voir que lui-même
+if ($_SESSION['role'] !== 'admin' && !$canDashboard) {
+    $detail_uid = $_SESSION['user_id'];
+}
+$detail_uname = $displayUsers[$detail_uid] ?? 'Inconnu';
+
+// On regroupe les tâches par Type pour l'affichage
+$tasksByType = [];
+foreach($tasks as $tid => $t) {
+    $type = $t['type'] ?? 'Technique';
+    $tasksByType[$type][$tid] = $t;
+}
+ksort($tasksByType); // Tri alphabétique des types
+
+// Grille de données pour le consultant ciblé
+$detail_grid = [];
+foreach($tasks as $tid => $t) {
+    $detail_grid[$tid] = array_fill_keys(array_keys($dash_months), 0);
+}
+
+// --------------------------------------------------------
+// AGRÉGATION DES DONNÉES GLOBALES ET DÉTAILLÉES
 // --------------------------------------------------------
 foreach($allData as $e) {
     $uid = $e['user_id'];
     $tid = $e['task_id'];
-    if (!isset($displayUsers[$uid])) continue;
     
     $dt = new DateTime($e['date']);
     $m_key = $dt->format('Y-m');
     
     if (isset($dash_months[$m_key])) {
-        $pivot_user_month[$uid][$m_key] += $e['valeur_j'];
-        if(isset($pivot_task_month[$tid])) $pivot_task_month[$tid][$m_key] += $e['valeur_j'];
-        if(isset($pivot_task_user[$tid][$uid])) $pivot_task_user[$tid][$uid] += $e['valeur_j'];
+        // Alim des vues globales
+        if (isset($displayUsers[$uid])) {
+            $pivot_user_month[$uid][$m_key] += $e['valeur_j'];
+            if(isset($pivot_task_month[$tid])) $pivot_task_month[$tid][$m_key] += $e['valeur_j'];
+            if(isset($pivot_task_user[$tid][$uid])) $pivot_task_user[$tid][$uid] += $e['valeur_j'];
+        }
+        
+        // Alim de la vue détaillée Consultant
+        if ($uid === $detail_uid && isset($detail_grid[$tid])) {
+            $detail_grid[$tid][$m_key] += $e['valeur_j'];
+        }
     }
 }
 
@@ -96,9 +125,9 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max) {
 
 <div class="d-flex justify-content-between align-items-center mb-3 bg-white p-2 rounded shadow-sm border">
     <div>
-        <a href="?action=home&date=<?= $nav_prev ?>" class="btn btn-sm btn-light border"><i class="bi bi-chevron-double-left"></i> 6 Mois Précédents</a>
-        <a href="?action=home&date=<?= date('Y-m-01') ?>" class="btn btn-sm btn-light border mx-1">Mois en cours</a>
-        <a href="?action=home&date=<?= $nav_next ?>" class="btn btn-sm btn-light border">6 Mois Suivants <i class="bi bi-chevron-double-right"></i></a>
+        <a href="?action=home&date=<?= $nav_prev ?><?= isset($_GET['detail_uid']) ? '&detail_uid='.$_GET['detail_uid'] : '' ?>" class="btn btn-sm btn-light border"><i class="bi bi-chevron-double-left"></i> 6 Mois Précédents</a>
+        <a href="?action=home&date=<?= date('Y-m-01') ?><?= isset($_GET['detail_uid']) ? '&detail_uid='.$_GET['detail_uid'] : '' ?>" class="btn btn-sm btn-light border mx-1">Mois en cours</a>
+        <a href="?action=home&date=<?= $nav_next ?><?= isset($_GET['detail_uid']) ? '&detail_uid='.$_GET['detail_uid'] : '' ?>" class="btn btn-sm btn-light border">6 Mois Suivants <i class="bi bi-chevron-double-right"></i></a>
     </div>
     <div class="text-muted small fw-bold">
         Pilotage Mensuel de la Capacité
@@ -110,6 +139,9 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max) {
     <button class="nav-link active" id="vue1-tab" data-bs-toggle="tab" data-bs-target="#vue1" type="button"><i class="bi bi-person-lines-fill"></i> Consultant / Mois</button>
   </li>
   <li class="nav-item" role="presentation">
+    <button class="nav-link text-primary fw-bold" id="vue-detail-tab" data-bs-toggle="tab" data-bs-target="#vue-detail" type="button"><i class="bi bi-person-badge"></i> Détail Consultant</button>
+  </li>
+  <li class="nav-item" role="presentation">
     <button class="nav-link" id="vue2-tab" data-bs-toggle="tab" data-bs-target="#vue2" type="button"><i class="bi bi-folder-fill"></i> Projet / Mois</button>
   </li>
   <li class="nav-item" role="presentation">
@@ -117,7 +149,7 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max) {
   </li>
   <?php if($canSaisie): ?>
   <li class="nav-item ms-auto" role="presentation">
-    <button class="nav-link text-success fw-bold" id="saisie-tab" data-bs-toggle="tab" data-bs-target="#saisie" type="button"><i class="bi bi-plus-circle"></i> Saisie Manuelle</button>
+    <button class="nav-link text-success fw-bold" id="saisie-tab" data-bs-toggle="tab" data-bs-target="#saisie" type="button"><i class="bi bi-plus-circle"></i> Saisie Libre</button>
   </li>
   <?php endif; ?>
 </ul>
@@ -168,7 +200,87 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max) {
                 </tbody>
             </table>
         </div>
-        <div class="mt-2 small text-muted"><i class="bi bi-info-circle"></i> Cliquez sur une cellule pour ajouter rapidement de la charge à un consultant pour ce mois.</div>
+        <div class="mt-2 small text-muted"><i class="bi bi-info-circle"></i> Cliquez sur une cellule pour ajouter ou corriger rapidement la charge d'un consultant.</div>
+    </div>
+
+    <div class="tab-pane fade" id="vue-detail" role="tabpanel">
+        
+        <?php if ($_SESSION['role'] === 'admin' || $canDashboard): ?>
+        <form method="GET" class="mb-4 d-flex align-items-center bg-light p-2 rounded border">
+            <input type="hidden" name="action" value="home">
+            <input type="hidden" name="date" value="<?= htmlspecialchars($_GET['date'] ?? '') ?>">
+            <label class="me-3 fw-bold small text-primary"><i class="bi bi-funnel-fill"></i> Zoom sur :</label>
+            <select name="detail_uid" class="form-select form-select-sm w-auto fw-bold" onchange="this.form.submit()">
+                <?php foreach($displayUsers as $uid => $uname): ?>
+                    <option value="<?= $uid ?>" <?= $uid === $detail_uid ? 'selected' : '' ?>><?= htmlspecialchars($uname) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </form>
+        <?php else: ?>
+            <h5 class="mb-3 text-primary fw-bold"><i class="bi bi-person-badge"></i> Mon Détail d'Affectation</h5>
+        <?php endif; ?>
+
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover align-middle mb-0">
+                <thead class="table-light text-center">
+                    <tr>
+                        <th class="text-start text-muted text-uppercase small w-25">Projets & Activités</th>
+                        <?php foreach($dash_months as $m_key => $m_data): ?>
+                            <th><div class="fs-6 fw-bold text-dark"><?= $m_data['label'] ?></div></th>
+                        <?php endforeach; ?>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php 
+                    foreach($tasksByType as $type => $groupTasks): 
+                        // On vérifie si ce groupe de tâches a au moins une valeur pour ce user pour éviter les sections vides
+                        $hasDataInGroup = false;
+                        foreach($groupTasks as $tid => $t) {
+                            if(array_sum($detail_grid[$tid]) > 0) { $hasDataInGroup = true; break; }
+                        }
+                    ?>
+                        <tr class="table-secondary">
+                            <td colspan="7" class="fw-bold text-uppercase" style="letter-spacing: 1px; font-size: 0.8rem;">
+                                <i class="bi bi-collection"></i> <?= htmlspecialchars($type) ?>
+                            </td>
+                        </tr>
+
+                        <?php foreach($groupTasks as $tid => $t): 
+                            $color = htmlspecialchars($t['color'] ?? '#e2e8f0');
+                        ?>
+                        <tr>
+                            <td class="text-start ps-4">
+                                <div class="d-flex align-items-center">
+                                    <div class="rounded me-2" style="width: 10px; height: 10px; background-color: <?= $color ?>;"></div>
+                                    <div>
+                                        <div class="fw-bold text-dark small"><?= htmlspecialchars($t['title']) ?></div>
+                                        <div class="text-muted" style="font-size: 0.6rem;"><?= htmlspecialchars($t['itbm']) ?></div>
+                                    </div>
+                                </div>
+                            </td>
+                            <?php foreach($dash_months as $m_key => $m_data): 
+                                $valeur = $detail_grid[$tid][$m_key];
+                                // Si Admin ou si c'est soi-même, on rend cliquable
+                                $isClickable = ($_SESSION['role'] === 'admin' || $canSaisie) ? "cursor: pointer;" : "";
+                            ?>
+                                <td class="text-center" style="<?= $valeur > 0 ? 'background-color: #f0fdf4;' : '' ?> <?= $isClickable ?>" 
+                                    <?php if($isClickable): ?>
+                                    onclick="openFastModal('<?= $detail_uid ?>', '<?= addslashes(htmlspecialchars($detail_uname)) ?>', '<?= $m_key ?>', '<?= $tid ?>')"
+                                    <?php endif; ?>>
+                                    
+                                    <?php if($valeur > 0): ?>
+                                        <span class="badge bg-success px-2 py-1 fs-6"><?= $valeur ?> JH</span>
+                                    <?php else: ?>
+                                        <span class="text-muted" style="opacity: 0.15;">—</span>
+                                    <?php endif; ?>
+                                </td>
+                            <?php endforeach; ?>
+                        </tr>
+                        <?php endforeach; ?>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
     </div>
 
     <div class="tab-pane fade" id="vue2" role="tabpanel">
@@ -204,7 +316,11 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max) {
                         <?php foreach($dash_months as $m_key => $m_data): 
                             $valeur = $pivot_task_month[$tid][$m_key];
                         ?>
-                            <td class="text-center" style="<?= $valeur > 0 ? 'background-color: #f8fafc;' : '' ?>">
+                            <td class="text-center" style="<?= $valeur > 0 ? 'background-color: #f8fafc;' : '' ?>"
+                                <?php if($_SESSION['role'] === 'admin'): ?>
+                                    onclick="openFastModal('', '', '<?= $m_key ?>', '<?= $tid ?>')" style="cursor:pointer;" title="Affecter quelqu'un sur ce projet"
+                                <?php endif; ?>>
+                                
                                 <?php if($valeur > 0): ?>
                                     <span class="badge bg-primary px-2 py-1 fs-6"><?= $valeur ?> JH</span>
                                 <?php else: ?>
@@ -268,7 +384,7 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max) {
         <div class="row justify-content-center">
             <div class="col-md-5">
                 <div class="card shadow-sm border-success">
-                    <div class="card-header bg-success text-white"><i class="bi bi-pencil-square"></i> Déclarer une charge mensuelle</div>
+                    <div class="card-header bg-success text-white"><i class="bi bi-pencil-square"></i> Déclarer une charge manuellement</div>
                     <div class="card-body">
                         <form method="POST">
                             
@@ -297,18 +413,26 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max) {
                                 </select>
                             </div>
                             
-                            <div class="row mb-4">
+                            <div class="row mb-3">
                                 <div class="col-md-6">
                                     <label class="form-label small fw-bold">Mois d'imputation</label>
                                     <input type="month" name="month_saisie" class="form-control fw-bold text-primary" value="<?= date('Y-m') ?>" required>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label small fw-bold">Volume de Jours-Hommes</label>
+                                    <label class="form-label small fw-bold">Volume (Jours-Hommes)</label>
                                     <div class="input-group">
-                                        <input type="number" name="valeur" class="form-control fw-bold text-center" step="0.25" min="0.25" max="31" value="1" required>
+                                        <input type="number" name="valeur" class="form-control fw-bold text-center" step="0.25" min="0" max="31" value="1" required>
                                         <span class="input-group-text bg-light">JH</span>
                                     </div>
                                 </div>
+                            </div>
+
+                            <div class="mb-4 bg-light p-2 rounded border">
+                                <label class="form-label small fw-bold text-muted">Mode de sauvegarde :</label>
+                                <select name="edit_mode" class="form-select form-select-sm">
+                                    <option value="add">Ajouter à l'existant (+)</option>
+                                    <option value="replace" selected>Remplacer l'existant (=)</option>
+                                </select>
                             </div>
                             
                             <button type="submit" class="btn btn-success w-100 fw-bold py-2"><i class="bi bi-save"></i> Enregistrer l'affectation</button>
@@ -326,22 +450,33 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max) {
   <div class="modal-dialog modal-dialog-centered modal-sm">
     <div class="modal-content">
       <div class="modal-header bg-dark text-white py-2">
-        <h6 class="modal-title mb-0"><i class="bi bi-lightning-charge-fill text-warning"></i> Allocation Rapide</h6>
+        <h6 class="modal-title mb-0"><i class="bi bi-lightning-charge-fill text-warning"></i> Affectation Rapide</h6>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body bg-light">
-        <form method="POST" action="?action=home<?= isset($_GET['date']) ? '&date='.$_GET['date'] : '' ?>">
-            <input type="hidden" name="target_user_id" id="modal_uid" value="">
+        <form method="POST" action="?action=home<?= isset($_GET['date']) ? '&date='.$_GET['date'] : '' ?><?= isset($_GET['detail_uid']) ? '&detail_uid='.$_GET['detail_uid'] : '' ?>">
             <input type="hidden" name="month_saisie" id="modal_month" value="">
             
             <div class="text-center mb-3">
-                <div class="fw-bold text-dark fs-6" id="modal_uname"></div>
+                <div id="modal_uname_display" class="fw-bold text-dark fs-6 mb-1"></div>
+                
+                <?php if ($_SESSION['role'] === 'admin'): ?>
+                <select name="target_user_id" id="modal_uid_select" class="form-select form-select-sm border-primary fw-bold mb-2 d-none" required>
+                    <?php foreach($displayUsers as $uid => $uname): ?>
+                        <option value="<?= $uid ?>"><?= htmlspecialchars($uname) ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <?php else: ?>
+                    <input type="hidden" name="target_user_id" id="modal_uid_hidden" value="">
+                <?php endif; ?>
+                
                 <div class="badge bg-secondary" id="modal_month_display"></div>
             </div>
             
             <div class="mb-3">
-                <label class="form-label small fw-bold text-muted">Affecter sur le projet :</label>
-                <select name="task_id" class="form-select form-select-sm" required>
+                <label class="form-label small fw-bold text-muted">Sur le projet :</label>
+                <select name="task_id" id="modal_task_id" class="form-select form-select-sm" required>
+                    <option value="" disabled selected>Sélectionner...</option>
                     <?php foreach($tasks as $id => $t): 
                         $type = htmlspecialchars($t['type'] ?? 'Technique');
                     ?>
@@ -351,14 +486,21 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max) {
             </div>
             
             <div class="mb-3">
-                <label class="form-label small fw-bold text-muted">Volume de charge (Jours-Hommes) :</label>
+                <label class="form-label small fw-bold text-muted">Volume (0 pour effacer) :</label>
                 <div class="input-group input-group-sm">
-                    <input type="number" name="valeur" class="form-control text-center fw-bold" step="0.25" min="0.25" max="31" value="1" required>
+                    <input type="number" name="valeur" class="form-control text-center fw-bold" step="0.25" min="0" max="31" value="1" required>
                     <span class="input-group-text">JH</span>
                 </div>
             </div>
+
+            <div class="mb-3">
+                <select name="edit_mode" class="form-select form-select-sm bg-white">
+                    <option value="replace" selected>Remplacer l'existant (=)</option>
+                    <option value="add">Ajouter à l'existant (+)</option>
+                </select>
+            </div>
             
-            <button type="submit" class="btn btn-dark btn-sm w-100 fw-bold">Valider l'affectation</button>
+            <button type="submit" class="btn btn-dark btn-sm w-100 fw-bold">Valider</button>
         </form>
       </div>
     </div>
@@ -380,15 +522,38 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 });
 
-function openFastModal(uid, uname, monthKey) {
-    document.getElementById('modal_uid').value = uid;
-    document.getElementById('modal_uname').innerText = uname;
+function openFastModal(uid, uname, monthKey, taskId = '') {
+    // Gestion du mois
     document.getElementById('modal_month').value = monthKey; 
-    
     const parts = monthKey.split('-');
     const dateObj = new Date(parts[0], parts[1] - 1);
     const monthName = dateObj.toLocaleString('fr-FR', { month: 'long', year: 'numeric' });
     document.getElementById('modal_month_display').innerText = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+    
+    // Gestion de l'utilisateur (cas Admin qui clique depuis la vue projet)
+    const unameDisplay = document.getElementById('modal_uname_display');
+    const uidSelect = document.getElementById('modal_uid_select');
+    const uidHidden = document.getElementById('modal_uid_hidden');
+
+    if (uid) {
+        // Clic sur une cellule liée à un user spécifique
+        unameDisplay.innerText = uname;
+        unameDisplay.classList.remove('d-none');
+        if(uidSelect) { uidSelect.value = uid; uidSelect.classList.add('d-none'); }
+        if(uidHidden) uidHidden.value = uid;
+    } else {
+        // Clic sur une cellule sans user (ex: Vue Projet globale par l'Admin)
+        unameDisplay.classList.add('d-none');
+        if(uidSelect) { uidSelect.classList.remove('d-none'); uidSelect.value = ''; }
+    }
+
+    // Pré-sélection de la tâche si fournie
+    const taskSelect = document.getElementById('modal_task_id');
+    if (taskId) {
+        taskSelect.value = taskId;
+    } else {
+        taskSelect.value = '';
+    }
     
     var myModal = new bootstrap.Modal(document.getElementById('fastAddModal'));
     myModal.show();
