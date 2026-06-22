@@ -1,3 +1,14 @@
+<?php if(isset($_GET['zip_error'])): ?>
+    <div class="alert alert-danger shadow-sm py-3 mb-4 fw-bold border-0" style="background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%); color: #991b1b; border-left: 5px solid #ef4444 !important;">
+        <i class="bi bi-exclamation-triangle-fill fs-5 me-2 align-middle"></i> 
+        Le module PHP <code>ZipArchive</code> est introuvable sur le serveur. 
+        <div class="mt-2 fw-normal small text-dark">
+            Pour activer la fonctionnalité de sauvegarde, connectez-vous à votre serveur Linux et exécutez la commande :<br>
+            <code class="bg-dark text-light px-2 py-1 rounded d-inline-block mt-1">sudo dnf install php-pecl-zip && sudo systemctl restart httpd</code>
+        </div>
+    </div>
+<?php endif; ?>
+
 <div class="d-flex justify-content-between align-items-center mb-4 bg-white p-3 rounded shadow-sm border">
     <h5 class="mb-0 text-dark fw-bold"><i class="bi bi-shield-lock-fill text-primary"></i> Console d'Administration</h5>
     <?php if ($_SESSION['role'] === 'admin'): ?>
@@ -9,6 +20,28 @@
     </div>
     <?php endif; ?>
 </div>
+
+<?php if ($_SESSION['role'] === 'admin'): ?>
+    <?php if(isset($_GET['settings_success'])): ?>
+        <div class="alert alert-success small py-2 fw-bold"><i class="bi bi-check-circle"></i> Le nom de l'application a bien été mis à jour.</div>
+    <?php endif; ?>
+    <div class="card border-primary shadow-sm mb-4">
+        <div class="card-header bg-primary text-white"><i class="bi bi-sliders"></i> Configuration de l'application</div>
+        <div class="card-body py-3">
+            <form method="POST" class="row align-items-end">
+                <input type="hidden" name="update_settings" value="1">
+                <div class="col-md-9">
+                    <label class="small fw-bold text-muted mb-1">Nom de l'équipe ou du Pôle (Affiché dans le menu en haut à gauche)</label>
+                    <?php $current_settings = getDb(FILE_SETTINGS); ?>
+                    <input type="text" name="app_name" class="form-control fw-bold" value="<?= htmlspecialchars($current_settings['app_name'] ?? 'FlexiCAF') ?>" required>
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-primary w-100 fw-bold shadow-sm"><i class="bi bi-save"></i> Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+<?php endif; ?>
 
 <div class="row">
     
