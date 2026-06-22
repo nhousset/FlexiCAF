@@ -38,19 +38,15 @@ if (!in_array($action, ['login', 'init_admin']) && !isset($_SESSION['user_id']))
     header('Location: ?action=login'); exit;
 }
 
-// ---------------------------------------------------------
-// TRAITEMENT : SAISIE MENSUELLE (Formulaire ou Modale Rapide)
-// ---------------------------------------------------------
+// Traitement : Saisie Mensuelle
 if ($action === 'home' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['task_id'])) {
     if (!hasPermission('can_saisie')) { die("Action non autorisée."); }
 
     $task_id = $_POST['task_id'];
     $valeur = floatval($_POST['valeur']);
-    $month_saisie = $_POST['month_saisie']; // Format attendu : YYYY-MM
+    $month_saisie = $_POST['month_saisie']; 
     
-    // On enregistre virtuellement la charge au 1er du mois pour compatibilité des tris
     $date_to_save = $month_saisie . '-01'; 
-    
     $target_user_id = (!empty($_POST['target_user_id']) && $_SESSION['role'] === 'admin') ? $_POST['target_user_id'] : $_SESSION['user_id'];
 
     $data = getDb(FILE_DATA);
@@ -68,9 +64,7 @@ if ($action === 'home' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST[
     header("Location: $redirect_url&success=1"); exit;
 }
 
-// ---------------------------------------------------------
-// TRAITEMENTS ADMIN
-// ---------------------------------------------------------
+// Traitements Admin
 if ($action === 'admin' && $_SESSION['role'] === 'admin' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['add_user'])) {
         $users = getDb(FILE_USERS);
@@ -98,11 +92,15 @@ if ($action === 'admin' && $_SESSION['role'] === 'admin' && $_SERVER['REQUEST_ME
         }
     }
 
+    // Création Tâche (Mise à jour avec le type)
     if (isset($_POST['add_task'])) {
         $tasks = getDb(FILE_TASKS);
         $tasks[uniqid('tsk_')] = [
-            'title' => $_POST['t_title'], 'desc' => $_POST['t_desc'], 
-            'itbm' => $_POST['t_itbm'], 'color' => $_POST['t_color']
+            'title' => $_POST['t_title'], 
+            'type'  => $_POST['t_type'], // <-- NOUVEAU CHAMP
+            'desc'  => $_POST['t_desc'], 
+            'itbm'  => $_POST['t_itbm'], 
+            'color' => $_POST['t_color']
         ];
         saveDb(FILE_TASKS, $tasks);
     }
