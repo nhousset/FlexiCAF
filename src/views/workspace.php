@@ -41,7 +41,6 @@ for ($i = 0; $i < 6; $i++) {
 // --------------------------------------------------------
 $displayUsers = [];
 if ($_SESSION['role'] === 'admin' || $canDashboard) {
-    // L'administrateur n'est plus ajouté à la liste des consultants
     foreach($allUsers as $id => $u) {
         if (empty($u['is_excluded'])) {
             $displayUsers[$id] = mb_strtoupper($u['name'], 'UTF-8');
@@ -81,6 +80,13 @@ $detail_uid = $_GET['detail_uid'] ?? $_SESSION['user_id'];
 if ($_SESSION['role'] !== 'admin' && !$canDashboard) {
     $detail_uid = $_SESSION['user_id'];
 }
+
+// CORRECTION BUG WARNING : Si l'UID ciblé n'existe pas dans le tableau (ex: l'Admin), on prend le premier dispo
+if (!isset($displayUsers[$detail_uid])) {
+    $keys = array_keys($displayUsers);
+    $detail_uid = !empty($keys) ? $keys[0] : '';
+}
+
 $detail_uname = $displayUsers[$detail_uid] ?? 'INCONNU';
 
 $tasksByType = [];
@@ -176,8 +182,6 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
 
 <div class="tab-content bg-white border border-top-0 p-3 rounded-bottom shadow-sm" id="viewTabsContent">
 
-    <!-- ========================================================================================= -->
-    <!-- VUE 1 : CONSULTANT / MOIS -->
     <div class="tab-pane fade show active" id="vue1" role="tabpanel">
         <div class="table-responsive">
             <table class="table table-bordered table-hover text-center align-middle mb-0">
@@ -213,7 +217,7 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
                             </div>
                         </td>
                         <?php foreach($dash_months as $m_key => $m_data): 
-                            $valeur = $pivot_user_month[$uid][$m_key];
+                            $valeur = $pivot_user_month[$uid][$m_key] ?? 0; // Sécurité rajoutée ici
                             $cap_max = $m_data['working_days'];
                             $style = getMonthlyHeatmapStyle($valeur, $cap_max, $isVirtual);
                             
@@ -254,7 +258,7 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
                         <?php foreach($dash_months as $m_key => $m_data): 
                             $total_load = 0;
                             foreach($displayUsers as $uid => $uname) {
-                                $total_load += $pivot_user_month[$uid][$m_key];
+                                $total_load += $pivot_user_month[$uid][$m_key] ?? 0;
                             }
                             $total_cap = $m_data['working_days'] * $real_users_count;
                             $perc = $total_cap > 0 ? round(($total_load / $total_cap) * 100) : 0;
@@ -272,8 +276,6 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
         <div class="mt-2 small text-muted"><i class="bi bi-info-circle"></i> Cliquez sur une cellule pour consulter le détail des affectations de ce mois.</div>
     </div>
 
-    <!-- ========================================================================================= -->
-    <!-- VUE DÉTAIL CONSULTANT -->
     <div class="tab-pane fade" id="vue-detail" role="tabpanel">
         
         <?php if ($_SESSION['role'] === 'admin' || $canDashboard): ?>
@@ -328,7 +330,7 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
                                 </div>
                             </td>
                             <?php foreach($dash_months as $m_key => $m_data): 
-                                $valeur = $detail_grid[$tid][$m_key];
+                                $valeur = $detail_grid[$tid][$m_key] ?? 0;
                                 $isClickable = ($_SESSION['role'] === 'admin' || $canSaisie) ? "cursor: pointer;" : "";
                             ?>
                                 <td class="text-center" style="<?= $valeur > 0 ? 'background-color: #f0fdf4;' : '' ?> <?= $isClickable ?>" 
@@ -351,7 +353,8 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
                     <tr>
                         <td class="text-end fw-bold align-middle">TOTAL AFFECTÉ (Ce profil)</td>
                         <?php foreach($dash_months as $m_key => $m_data): 
-                            $total_load = $pivot_user_month[$detail_uid][$m_key];
+                            // Protection contre les index non définis (si l'UID était admin par exemple)
+                            $total_load = $pivot_user_month[$detail_uid][$m_key] ?? 0;
                             $cap_max = ($detail_uid === '_virtual_unassigned_') ? 0 : $m_data['working_days'];
                             $perc = $cap_max > 0 ? round(($total_load / $cap_max) * 100) : 0;
                             $style = getMonthlyHeatmapStyle($total_load, $cap_max, ($detail_uid === '_virtual_unassigned_'));
@@ -369,8 +372,6 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
         </div>
     </div>
 
-    <!-- ========================================================================================= -->
-    <!-- VUE 2 : PROJET / MOIS -->
     <div class="tab-pane fade" id="vue2" role="tabpanel">
         <div class="table-responsive">
             <table class="table table-bordered table-hover align-middle mb-0">
@@ -402,7 +403,7 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
                             </div>
                         </td>
                         <?php foreach($dash_months as $m_key => $m_data): 
-                            $valeur = $pivot_task_month[$tid][$m_key];
+                            $valeur = $pivot_task_month[$tid][$m_key] ?? 0;
                         ?>
                             <td class="text-center" style="<?= $valeur > 0 ? 'background-color: #f8fafc;' : '' ?>"
                                 <?php if($_SESSION['role'] === 'admin'): ?>
@@ -424,7 +425,7 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
                         <td class="text-end fw-bold align-middle">EFFORT TOTAL DÉPLOYÉ</td>
                         <?php foreach($dash_months as $m_key => $m_data): 
                             $total_load = 0;
-                            foreach($displayUsers as $uid => $uname) $total_load += $pivot_user_month[$uid][$m_key];
+                            foreach($displayUsers as $uid => $uname) $total_load += $pivot_user_month[$uid][$m_key] ?? 0;
                             
                             $total_cap = $m_data['working_days'] * $real_users_count;
                             $perc = $total_cap > 0 ? round(($total_load / $total_cap) * 100) : 0;
@@ -441,8 +442,6 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
         </div>
     </div>
 
-    <!-- ========================================================================================= -->
-    <!-- VUE 3 : PROJET / CONSULTANT -->
     <div class="tab-pane fade" id="vue3" role="tabpanel">
         <div class="alert alert-light border small py-2 mb-3">
             <i class="bi bi-info-square"></i> Cette vue agrège l'effort total (en JH) de chaque consultant sur la période affichée (les 6 mois).
@@ -474,7 +473,7 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
                             </div>
                         </td>
                         <?php foreach($displayUsers as $uid => $uname): 
-                            $valeur = $pivot_task_user[$tid][$uid];
+                            $valeur = $pivot_task_user[$tid][$uid] ?? 0;
                         ?>
                             <td style="<?= $valeur > 0 ? 'background-color: #f0fdf4; color: #166534; font-weight: bold;' : '' ?>">
                                 <?= $valeur > 0 ? $valeur . ' JH' : '<span class="text-muted" style="opacity: 0.2;">—</span>' ?>
@@ -505,8 +504,6 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
         </div>
     </div>
 
-    <!-- ========================================================================================= -->
-    <!-- VUE 4 : SAISIE MANUELLE LIBRE -->
     <?php if($canSaisie): ?>
     <div class="tab-pane fade mt-3" id="saisie" role="tabpanel">
         <div class="row justify-content-center">
@@ -574,7 +571,6 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
 
 </div>
 
-<!-- MODALE D'AFFECTATION RAPIDE -->
 <div class="modal fade" id="fastAddModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered modal-sm">
     <div class="modal-content">
@@ -636,7 +632,6 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
   </div>
 </div>
 
-<!-- NOUVELLE MODALE : DÉTAIL D'AFFECTATION (Vue 1) -->
 <div class="modal fade" id="detailModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
@@ -729,7 +724,6 @@ function openDetailModal(uname, monthKey, cellElement) {
         const details = JSON.parse(detailsRaw);
         details.forEach(d => {
             total += d.val;
-            // Transformation du type en MAJ pour affichage propre
             const typeUpper = d.type.toUpperCase();
             tbody.innerHTML += `
                 <tr>
