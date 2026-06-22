@@ -1,67 +1,184 @@
-body {
-    background-color: #f8f9fa;
-    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+/* Importation d'une police moderne (Plus Jakarta Sans) */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+:root {
+    /* Dégradés Flashy Modernes */
+    --primary-grad: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
+    --success-grad: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    --info-grad: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
+    --dark-grad: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    
+    /* Couleurs de fond */
+    --bg-color: #f8fafc;
+    --card-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
 }
-.navbar-brand { font-weight: 700; letter-spacing: 0.5px; }
-.card { border: none; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.04); margin-bottom: 20px; }
-.card-header { border-radius: 8px 8px 0 0 !important; font-weight: 600; }
-.badge-itbm { background-color: #4a5568; font-family: monospace; font-size: 0.7rem; }
+
+body {
+    background-color: var(--bg-color);
+    /* Motif géométrique discret en fond */
+    background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+    background-size: 24px 24px;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    color: #334155;
+}
 
 /* ==========================================
-   VUE PLANNING (STYLE RESOURCE GURU)
+   NAVIGATION & LOGO
+   ========================================== */
+.navbar-custom {
+    background: var(--dark-grad);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    padding: 12px 0;
+}
+
+/* Le Logo 100% CSS */
+.brand-logo-text {
+    font-weight: 800;
+    font-size: 1.5rem;
+    letter-spacing: -0.5px;
+    background: var(--primary-grad);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    display: inline-block;
+}
+.brand-logo-icon {
+    background: var(--primary-grad);
+    color: white;
+    border-radius: 8px;
+    padding: 4px 8px;
+    margin-right: 8px;
+    font-size: 1.2rem;
+    box-shadow: 0 4px 10px rgba(236, 72, 153, 0.3);
+}
+
+/* ==========================================
+   CARTES (Glassmorphism & Shadows)
+   ========================================== */
+.card {
+    border: none;
+    border-radius: 16px;
+    box-shadow: var(--card-shadow);
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    margin-bottom: 24px;
+    overflow: hidden;
+}
+.card:hover {
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+.card-header {
+    border-bottom: 1px solid rgba(0,0,0,0.05) !important;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 0.85rem;
+    padding: 15px 20px;
+}
+
+/* Recoloration des en-têtes de cartes Bootstrap via nos dégradés */
+.bg-primary { background: var(--primary-grad) !important; color: white !important; }
+.bg-success { background: var(--success-grad) !important; color: white !important; }
+.bg-info { background: var(--info-grad) !important; color: white !important; }
+.bg-dark { background: var(--dark-grad) !important; color: white !important; }
+
+/* ==========================================
+   BOUTONS MODERNES (Effet "Lift" au survol)
+   ========================================== */
+.btn {
+    border: none !important;
+    border-radius: 8px;
+    font-weight: 600;
+    padding: 8px 16px;
+    transition: all 0.3s ease;
+}
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+.btn-primary { background: var(--primary-grad) !important; color: white !important; }
+.btn-success { background: var(--success-grad) !important; color: white !important; }
+.btn-info { background: var(--info-grad) !important; color: white !important; }
+.btn-dark { background: var(--dark-grad) !important; color: white !important; }
+
+/* Inputs et Formulaires */
+.form-control, .form-select {
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    padding: 10px 15px;
+    background-color: #f8fafc;
+    transition: all 0.2s;
+}
+.form-control:focus, .form-select:focus {
+    background-color: #ffffff;
+    border-color: #a855f7;
+    box-shadow: 0 0 0 4px rgba(168, 85, 247, 0.1);
+}
+
+/* ==========================================
+   TABLEAUX & GRILLES CAPACITY PLANNING
    ========================================== */
 .planning-container {
     max-height: 70vh;
-    overflow-x: auto;
-    overflow-y: auto;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
+    overflow: auto;
+    border-radius: 16px;
     background: #fff;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    box-shadow: var(--card-shadow);
+    border: 1px solid rgba(0,0,0,0.05);
 }
-.planning-table { border-collapse: separate; border-spacing: 0; min-width: 100%; table-layout: fixed; }
-.planning-table th, .planning-table td { 
-    border-bottom: 1px solid #e2e8f0; 
-    border-right: 1px solid #e2e8f0; 
+.planning-table {
+    border-collapse: separate;
+    border-spacing: 0;
+    min-width: 100%;
 }
-.user-cell {
-    position: sticky; left: 0; z-index: 2;
-    background-color: #fff;
-    box-shadow: 2px 0 5px rgba(0,0,0,0.03);
-    min-width: 250px; width: 250px;
+.planning-table th, .planning-table td {
+    border-bottom: 1px solid #f1f5f9;
+    border-right: 1px solid #f1f5f9;
 }
 .planning-table thead th {
-    position: sticky; top: 0; z-index: 1;
-    background-color: #f8fafc;
+    background-color: #f8fafc !important;
+    color: #475569;
+    font-weight: 700;
+    position: sticky; top: 0; z-index: 10;
+}
+.user-cell {
+    position: sticky; left: 0; z-index: 11;
+    background-color: #ffffff;
+    box-shadow: 4px 0 15px rgba(0,0,0,0.03);
+}
+.planning-table thead th.user-cell { z-index: 12; }
+
+/* Onglets Bootstrap modernisés */
+.nav-tabs {
     border-bottom: 2px solid #e2e8f0;
+    gap: 10px;
+    margin-bottom: 24px;
 }
-.planning-table thead th.user-cell { z-index: 3; }
-
-/* Cellule du planning et bouton ajout rapide */
-.day-cell { position: relative; min-width: 140px; width: 140px; vertical-align: top; padding: 6px !important; }
-.day-cell.weekend { background-color: #f1f5f9; }
-.day-cell:hover .cell-add-btn { opacity: 1; }
-.cell-add-btn {
-    opacity: 0; transition: opacity 0.2s;
-    text-align: center; color: #10b981; cursor: pointer;
-    background: rgba(16, 185, 129, 0.1); border-radius: 4px;
-    padding: 2px 0; margin-bottom: 4px; font-size: 0.8rem; font-weight: 600;
+.nav-tabs .nav-link {
+    font-weight: 700;
+    color: #64748b;
+    border: none;
+    background: transparent;
+    border-bottom: 3px solid transparent;
+    padding: 12px 20px;
+    border-radius: 8px 8px 0 0;
+    transition: all 0.2s;
 }
-.cell-add-btn:hover { background: rgba(16, 185, 129, 0.2); }
-
-/* Blocs de tâches (Tags) */
-.task-block {
-    padding: 4px 6px; margin-bottom: 4px;
-    border-radius: 4px; font-size: 0.75rem;
-    color: #1e293b; transition: transform 0.1s;
-    display: flex; justify-content: space-between; align-items: center;
-    border-left: 3px solid rgba(0,0,0,0.2);
+.nav-tabs .nav-link:hover {
+    color: #a855f7;
+    background: rgba(168, 85, 247, 0.05);
 }
-.task-block:hover { transform: scale(1.02); cursor: default; }
-.task-title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80%; }
-.task-duration { font-weight: 700; opacity: 0.8; font-size: 0.7rem; }
+.nav-tabs .nav-link.active {
+    color: #a855f7 !important;
+    border-bottom: 3px solid #a855f7;
+    background: transparent;
+}
 
-/* Onglets */
-.nav-tabs .nav-link { font-weight: 600; color: #64748b; border: none; border-bottom: 3px solid transparent; padding: 10px 20px;}
-.nav-tabs .nav-link.active { color: #10b981; border-bottom: 3px solid #10b981; background: transparent; }
-.nav-tabs { border-bottom: 1px solid #e2e8f0; margin-bottom: 20px; }
+/* Badges */
+.badge {
+    border-radius: 6px;
+    padding: 5px 8px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
