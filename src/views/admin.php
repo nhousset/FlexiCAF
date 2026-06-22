@@ -2,12 +2,10 @@
     <h5 class="mb-0 text-dark fw-bold"><i class="bi bi-shield-lock-fill text-primary"></i> Console d'Administration</h5>
     <?php if ($_SESSION['role'] === 'admin'): ?>
     <div class="d-flex align-items-center">
-        <span class="text-muted small fw-bold me-3"><i class="bi bi-cloud-arrow-down-fill"></i> Télécharger les Backups :</span>
-        <div class="btn-group">
-            <a href="?action=admin&download=users.json" class="btn btn-sm btn-outline-secondary fw-bold" title="Comptes et Permissions"><i class="bi bi-people-fill"></i> Users</a>
-            <a href="?action=admin&download=tasks.json" class="btn btn-sm btn-outline-secondary fw-bold" title="Catalogue des projets"><i class="bi bi-tags-fill"></i> Tasks</a>
-            <a href="?action=admin&download=data.json" class="btn btn-sm btn-outline-secondary fw-bold" title="Saisies de la capacité (Plan de charge)"><i class="bi bi-database-fill"></i> Data</a>
-        </div>
+        <span class="text-muted small fw-bold me-3"><i class="bi bi-cloud-arrow-down-fill"></i> Sauvegarde Globale :</span>
+        <a href="?action=admin&download_all=1" class="btn btn-sm btn-outline-dark fw-bold shadow-sm" title="Télécharger la base complète au format ZIP">
+            <i class="bi bi-file-earmark-zip-fill text-warning"></i> Archive ZIP
+        </a>
     </div>
     <?php endif; ?>
 </div>
@@ -112,8 +110,8 @@
                             <ul class="mb-0 ps-3">
                                 <li><code>name</code> : Nom affiché dans le planning (Texte).</li>
                                 <li><code>email</code> : Identifiant de connexion (Texte).</li>
-                                <li><code class="text-danger">password</code> : Empreinte Bcrypt. Ne modifiez jamais cette chaîne manuellement. Si vous voulez changer un mot de passe via JSON, copiez/collez le hash d'un autre compte fonctionnel.</li>
-                                <li><code>can_saisie</code> : Droit de déclaration de charge (<code>true</code> ou <code>false</code> sans guillemets).</li>
+                                <li><code class="text-danger">password</code> : Empreinte Bcrypt. Ne modifiez jamais cette chaîne manuellement.</li>
+                                <li><code>can_saisie</code> : Droit de déclaration de charge (<code>true</code> / <code>false</code> sans guillemets).</li>
                                 <li><code>can_dashboard</code> : Droit de voir toute l'équipe (<code>true</code> / <code>false</code>).</li>
                                 <li><code>can_manage_tasks</code> : Droit d'éditer le catalogue (<code>true</code> / <code>false</code>).</li>
                                 <li><code>is_excluded</code> : Masquer le compte du planning (<code>true</code> / <code>false</code>).</li>
@@ -312,13 +310,11 @@ document.addEventListener("DOMContentLoaded", function() {
         return new bootstrap.Tooltip(tooltipTriggerEl);
     });
 
-    // Conserver l'onglet JSON (Tasks) ouvert si erreur/succès
     <?php if(isset($_GET['json_error']) || isset($_GET['json_success'])): ?>
         var jsonTab = new bootstrap.Tab(document.getElementById('json-tab'));
         jsonTab.show();
     <?php endif; ?>
 
-    // Conserver l'onglet JSON (Users) ouvert si erreur/succès
     <?php if(isset($_GET['json_user_error']) || isset($_GET['json_user_success'])): ?>
         var jsonUserTab = new bootstrap.Tab(document.getElementById('user-json-tab'));
         jsonUserTab.show();
