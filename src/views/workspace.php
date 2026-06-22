@@ -27,7 +27,6 @@ for ($i = 0; $i < 6; $i++) {
         'working_days' => 0
     ];
     
-    // Calcul de la capacité théorique (Jours ouvrés dans ce mois)
     $curr = clone $start_dash;
     $end_of_month = (clone $start_dash)->modify('last day of this month');
     while($curr <= $end_of_month) {
@@ -50,7 +49,7 @@ if ($_SESSION['role'] === 'admin' || $canDashboard) {
 }
 
 // --------------------------------------------------------
-// INITIALISATION DES 3 VUES (Tableaux Croisés Dynamiques)
+// INITIALISATION DES 3 VUES
 // --------------------------------------------------------
 $pivot_user_month = [];
 $pivot_task_month = [];
@@ -75,7 +74,6 @@ foreach($allData as $e) {
     $dt = new DateTime($e['date']);
     $m_key = $dt->format('Y-m');
     
-    // On agrège si la donnée appartient à un mois de la fenêtre d'affichage courante
     if (isset($dash_months[$m_key])) {
         $pivot_user_month[$uid][$m_key] += $e['valeur_j'];
         if(isset($pivot_task_month[$tid])) $pivot_task_month[$tid][$m_key] += $e['valeur_j'];
@@ -83,7 +81,6 @@ foreach($allData as $e) {
     }
 }
 
-// Helper Heatmap
 function getMonthlyHeatmapStyle($valeur, $capacite_max) {
     if ($valeur == 0) return 'background-color: #ffffff;';
     $perc = $capacite_max > 0 ? round(($valeur / $capacite_max) * 100) : 0;
@@ -184,9 +181,9 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max) {
                 </thead>
                 <tbody>
                     <?php foreach($tasks as $tid => $t): 
-                        // Ne pas afficher les projets avec 0 JH sur toute la période
                         if(array_sum($pivot_task_month[$tid]) == 0) continue;
                         $color = htmlspecialchars($t['color'] ?? '#e2e8f0');
+                        $type = htmlspecialchars($t['type'] ?? 'Technique');
                     ?>
                     <tr>
                         <td class="text-start">
@@ -194,7 +191,10 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max) {
                                 <div class="rounded me-2" style="width: 12px; height: 12px; background-color: <?= $color ?>;"></div>
                                 <div>
                                     <div class="fw-bold text-dark small"><?= htmlspecialchars($t['title']) ?></div>
-                                    <div class="text-muted" style="font-size: 0.65rem;"><?= htmlspecialchars($t['itbm']) ?></div>
+                                    <div class="text-muted" style="font-size: 0.65rem;">
+                                        <span class="badge bg-light text-dark border me-1"><?= $type ?></span>
+                                        <?= htmlspecialchars($t['itbm']) ?>
+                                    </div>
                                 </div>
                             </div>
                         </td>
@@ -232,15 +232,18 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max) {
                 </thead>
                 <tbody>
                     <?php foreach($tasks as $tid => $t): 
-                        // Ne pas afficher la ligne si personne ne bosse dessus sur la période
                         if(array_sum($pivot_task_user[$tid]) == 0) continue;
                         $color = htmlspecialchars($t['color'] ?? '#e2e8f0');
+                        $type = htmlspecialchars($t['type'] ?? 'Technique');
                     ?>
                     <tr>
                         <td class="text-start">
                             <div class="d-flex align-items-center">
                                 <div class="rounded me-2" style="width: 12px; height: 12px; background-color: <?= $color ?>;"></div>
-                                <span class="fw-bold text-dark small"><?= htmlspecialchars($t['title']) ?></span>
+                                <div>
+                                    <span class="fw-bold text-dark small d-block"><?= htmlspecialchars($t['title']) ?></span>
+                                    <span class="badge bg-light text-dark border" style="font-size: 0.55rem;"><?= $type ?></span>
+                                </div>
                             </div>
                         </td>
                         <?php foreach($displayUsers as $uid => $uname): 
@@ -269,8 +272,12 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max) {
                                 <label class="form-label small fw-bold">Projet / Activité ciblé</label>
                                 <select name="task_id" class="form-select" required>
                                     <option value="" disabled selected>Sélectionner un projet...</option>
-                                    <?php foreach($tasks as $id => $t): ?>
-                                        <option value="<?= $id ?>"><?= htmlspecialchars($t['title']) ?> (<?= htmlspecialchars($t['itbm']) ?>)</option>
+                                    <?php foreach($tasks as $id => $t): 
+                                        $type = htmlspecialchars($t['type'] ?? 'Technique');
+                                    ?>
+                                        <option value="<?= $id ?>">
+                                            [<?= $type ?>] <?= htmlspecialchars($t['title']) ?> (<?= htmlspecialchars($t['itbm']) ?>)
+                                        </option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>
@@ -320,8 +327,10 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max) {
             <div class="mb-3">
                 <label class="form-label small fw-bold text-muted">Affecter sur le projet :</label>
                 <select name="task_id" class="form-select form-select-sm" required>
-                    <?php foreach($tasks as $id => $t): ?>
-                        <option value="<?= $id ?>"><?= htmlspecialchars($t['title']) ?></option>
+                    <?php foreach($tasks as $id => $t): 
+                        $type = htmlspecialchars($t['type'] ?? 'Technique');
+                    ?>
+                        <option value="<?= $id ?>">[<?= $type ?>] <?= htmlspecialchars($t['title']) ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
@@ -343,7 +352,6 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max) {
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-// Persistance des onglets Bootstrap
 document.addEventListener("DOMContentLoaded", function() {
     let activeTab = localStorage.getItem('activeTab_monthly');
     if (activeTab && document.querySelector(activeTab)) {
@@ -357,13 +365,11 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 });
 
-// Modale Rapide (Pré-remplissage auto selon la cellule cliquée)
 function openFastModal(uid, uname, monthKey) {
     document.getElementById('modal_uid').value = uid;
     document.getElementById('modal_uname').innerText = uname;
-    document.getElementById('modal_month').value = monthKey; // Format YYYY-MM attendu par le POST
+    document.getElementById('modal_month').value = monthKey; 
     
-    // Affichage propre du mois (ex: 2026-06 -> Juin 2026)
     const parts = monthKey.split('-');
     const dateObj = new Date(parts[0], parts[1] - 1);
     const monthName = dateObj.toLocaleString('fr-FR', { month: 'long', year: 'numeric' });
