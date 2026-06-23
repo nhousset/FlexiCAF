@@ -45,7 +45,10 @@ if ($action === 'home' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST[
     if (!hasPermission('can_saisie') && $_SESSION['role'] !== 'admin') { die("Action non autorisée."); }
 
     $task_id = $_POST['task_id'];
-    $valeur = floatval($_POST['valeur']);
+    
+    // Remplacement de la virgule par un point pour la compatibilité PHP
+    $valeur = floatval(str_replace(',', '.', trim($_POST['valeur'])));
+    
     $month_saisie = $_POST['month_saisie']; 
     $edit_mode = $_POST['edit_mode'] ?? 'add'; 
     
@@ -199,7 +202,6 @@ if ($action === 'admin' && ($_SESSION['role'] === 'admin' || hasPermission('can_
             header('Location: ?action=admin'); exit;
         }
 
-        // --- NOUVEAU BLOC : ÉDITION D'UNE TÂCHE ---
         if (isset($_POST['edit_task'])) {
             $tasks = getDb(FILE_TASKS);
             $tid = $_POST['task_id'];
