@@ -39,14 +39,6 @@ $appName = !empty($appSettings['app_name']) ? htmlspecialchars($appSettings['app
 
         <div class="d-flex align-items-center ms-auto">
             
-            <!-- Cloche de notification factice (pour le style) -->
-            <a href="#" class="text-white text-decoration-none me-4 position-relative opacity-75 hover-opacity-100">
-                <i class="bi bi-bell-fill fs-5"></i>
-                <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle">
-                    <span class="visually-hidden">Nouvelles alertes</span>
-                </span>
-            </a>
-
             <!-- Menu Déroulant Utilisateur -->
             <div class="dropdown">
                 <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle user-dropdown-toggle" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
@@ -79,6 +71,15 @@ $appName = !empty($appSettings['app_name']) ? htmlspecialchars($appSettings['app
                     <?php endif; ?>
                     
                     <li><hr class="dropdown-divider my-2"></li>
+
+                    <!-- Lien "À propos" -->
+                    <li>
+                        <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#aboutModal">
+                            <i class="bi bi-info-circle text-secondary me-2"></i> À propos
+                        </a>
+                    </li>
+                    
+                    <li><hr class="dropdown-divider my-2"></li>
                     
                     <!-- Bouton Déconnexion -->
                     <li class="px-2">
@@ -92,6 +93,30 @@ $appName = !empty($appSettings['app_name']) ? htmlspecialchars($appSettings['app
         </div>
     </div>
 </nav>
+
+<!-- Modale "À propos" -->
+<div class="modal fade" id="aboutModal" tabindex="-1" aria-labelledby="aboutModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header text-white" style="background: var(--primary-grad);">
+        <h6 class="modal-title fw-bold" id="aboutModalLabel"><i class="bi bi-info-circle-fill me-2"></i> À propos</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
+      </div>
+      <div class="modal-body text-center p-4">
+        <div class="mb-3">
+            <span class="brand-logo-icon" style="font-size: 2rem; padding: 10px 16px;"><i class="bi bi-layers-fill"></i></span>
+        </div>
+        <h5 class="fw-bold mb-1"><?= $appName ?></h5>
+        <p class="text-muted small mb-3">Outil de Pilotage et de Capacity Planning.</p>
+        
+        <div class="bg-light rounded p-2 mb-0 border">
+            <span class="d-block small text-dark">Version 1.0</span>
+            <span class="d-block small fw-bold text-primary mt-1">&copy; <?= date('Y') ?> Nicolas Housset</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 <?php endif; ?>
 
 <!-- Conteneur principal de l'application -->
