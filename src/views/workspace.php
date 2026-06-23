@@ -37,7 +37,7 @@ for ($i = 0; $i < 6; $i++) {
 }
 
 // --------------------------------------------------------
-// PRÉPARATION DES ACTEURS (Noms en Majuscules & Sans Admin)
+// PRÉPARATION DES ACTEURS
 // --------------------------------------------------------
 $displayUsers = [];
 if ($_SESSION['role'] === 'admin' || $canDashboard) {
@@ -129,12 +129,11 @@ foreach($allData as $e) {
 }
 
 // --------------------------------------------------------
-// MOTEUR DE COULEURS HEATMAP (Avec dégradés et volume)
+// MOTEUR DE COULEURS HEATMAP
 // --------------------------------------------------------
 function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
     if ($is_virtual) {
         if ($valeur == 0) return 'background-color: #f8f9fa; color: #adb5bd;';
-        // Gris texturé pour le Reste à planifier
         return 'background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); color: #334155; font-weight: bold; border: 1px dashed #94a3b8; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);';
     }
     
@@ -142,18 +141,14 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
     $perc = $capacite_max > 0 ? round(($valeur / $capacite_max) * 100) : 0;
     
     if ($perc <= 60) {
-        // Vert très clair
         return 'background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); color: #065f46; border: 1px solid #6ee7b7; box-shadow: inset 0 2px 4px rgba(255,255,255,0.5);'; 
     }
     if ($perc <= 90) {
-        // Vert validé
         return 'background: linear-gradient(135deg, #34d399 0%, #10b981 100%); color: #022c22; font-weight: bold; border: 1px solid #059669; box-shadow: inset 0 2px 4px rgba(255,255,255,0.3);'; 
     }
     if ($perc <= 100) {
-        // Jaune / Orange (Alerte douce)
         return 'background: linear-gradient(135deg, #fde047 0%, #facc15 100%); color: #713f12; font-weight: bold; border: 1px solid #eab308; box-shadow: inset 0 2px 4px rgba(255,255,255,0.4);'; 
     }
-    // Strictement > 100% -> ROUGE VIF (Surcharge)
     return 'background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: #ffffff; font-weight: bold; border: 1px solid #991b1b; box-shadow: inset 0 2px 4px rgba(255,255,255,0.2), 0 2px 5px rgba(239, 68, 68, 0.3); text-shadow: 0 1px 2px rgba(0,0,0,0.2);'; 
 }
 ?>
@@ -554,7 +549,7 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
                                 <div class="col-md-6">
                                     <label class="form-label small fw-bold">Volume (Jours-Hommes)</label>
                                     <div class="input-group">
-                                        <input type="number" name="valeur" class="form-control fw-bold text-center" step="0.25" min="0" max="31" value="1" required>
+                                        <input type="text" inputmode="decimal" pattern="^[0-9]*([.,][0-9]+)?$" name="valeur" class="form-control fw-bold text-center" value="1" placeholder="ex: 0.5" required>
                                         <span class="input-group-text bg-light">JH</span>
                                     </div>
                                 </div>
@@ -581,10 +576,10 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
 
 <div class="modal fade" id="fastAddModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered modal-sm">
-    <div class="modal-content">
-      <div class="modal-header bg-dark text-white py-2">
-        <h6 class="modal-title mb-0"><i class="bi bi-lightning-charge-fill text-warning"></i> Affectation Rapide</h6>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header py-2 border-0 transition-color" id="fastAddModalHeader" style="background-color: #212529; color: #fff; transition: background-color 0.3s ease;">
+        <h6 class="modal-title mb-0 fw-bold" id="fastAddModalTitle"><i class="bi bi-journal-check me-1" style="text-shadow: 0 1px 2px rgba(0,0,0,0.3);"></i> <span style="text-shadow: 0 1px 2px rgba(0,0,0,0.3);">Affectation</span></h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" id="fastAddModalCloseBtn"></button>
       </div>
       <div class="modal-body bg-light">
         <form method="POST" action="?action=home<?= isset($_GET['date']) ? '&date='.$_GET['date'] : '' ?><?= isset($_GET['detail_uid']) ? '&detail_uid='.$_GET['detail_uid'] : '' ?>">
@@ -603,17 +598,18 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
                     <input type="hidden" name="target_user_id" id="modal_uid_hidden" value="">
                 <?php endif; ?>
                 
-                <div class="badge bg-secondary" id="modal_month_display"></div>
+                <div class="badge bg-secondary shadow-sm" id="modal_month_display"></div>
             </div>
             
             <div class="mb-3">
                 <label class="form-label small fw-bold text-muted">Sur le projet :</label>
-                <select name="task_id" id="modal_task_id" class="form-select form-select-sm" required>
-                    <option value="" disabled selected>Sélectionner...</option>
+                <select name="task_id" id="modal_task_id" class="form-select form-select-sm" required onchange="updateModalColor()">
+                    <option value="" disabled selected data-color="#212529">Sélectionner...</option>
                     <?php foreach($tasks as $id => $t): 
                         $type = htmlspecialchars($t['type'] ?? 'Technique');
+                        $color = htmlspecialchars($t['color'] ?? '#212529');
                     ?>
-                        <option value="<?= $id ?>">[<?= mb_strtoupper($type, 'UTF-8') ?>] <?= htmlspecialchars($t['title']) ?></option>
+                        <option value="<?= $id ?>" data-color="<?= $color ?>">[<?= mb_strtoupper($type, 'UTF-8') ?>] <?= htmlspecialchars($t['title']) ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
@@ -621,19 +617,19 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
             <div class="mb-3">
                 <label class="form-label small fw-bold text-muted">Volume (0 pour effacer) :</label>
                 <div class="input-group input-group-sm">
-                    <input type="number" name="valeur" class="form-control text-center fw-bold" step="0.25" min="0" max="31" value="1" required>
-                    <span class="input-group-text">JH</span>
+                    <input type="text" inputmode="decimal" pattern="^[0-9]*([.,][0-9]+)?$" name="valeur" class="form-control text-center fw-bold" value="1" placeholder="ex: 0.5" required>
+                    <span class="input-group-text bg-white">JH</span>
                 </div>
             </div>
 
-            <div class="mb-3">
+            <div class="mb-4">
                 <select name="edit_mode" class="form-select form-select-sm bg-white">
                     <option value="replace" selected>Remplacer l'existant (=)</option>
                     <option value="add">Ajouter à l'existant (+)</option>
                 </select>
             </div>
             
-            <button type="submit" class="btn btn-dark btn-sm w-100 fw-bold">Valider</button>
+            <button type="submit" class="btn btn-dark btn-sm w-100 fw-bold py-2 shadow-sm">Valider</button>
         </form>
       </div>
     </div>
@@ -684,6 +680,36 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 });
 
+function updateModalColor() {
+    const select = document.getElementById('modal_task_id');
+    const header = document.getElementById('fastAddModalHeader');
+    const closeBtn = document.getElementById('fastAddModalCloseBtn');
+    
+    if(select.selectedIndex >= 0) {
+        const color = select.options[select.selectedIndex].getAttribute('data-color');
+        if(color) {
+            header.style.backgroundColor = color;
+            
+            // Calcul basique pour savoir si la couleur de fond est claire ou foncée (pour la lisibilité)
+            const hex = color.replace('#', '');
+            const r = parseInt(hex.substr(0, 2), 16);
+            const g = parseInt(hex.substr(2, 2), 16);
+            const b = parseInt(hex.substr(4, 2), 16);
+            const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+            
+            if (yiq >= 128) {
+                // Fond clair -> Texte sombre
+                header.style.color = '#1e293b'; 
+                closeBtn.classList.remove('btn-close-white');
+            } else {
+                // Fond sombre -> Texte clair
+                header.style.color = '#ffffff';
+                closeBtn.classList.add('btn-close-white');
+            }
+        }
+    }
+}
+
 function openFastModal(uid, uname, monthKey, taskId = '') {
     document.getElementById('modal_month').value = monthKey; 
     const parts = monthKey.split('-');
@@ -711,6 +737,9 @@ function openFastModal(uid, uname, monthKey, taskId = '') {
     } else {
         taskSelect.value = '';
     }
+    
+    // Met à jour la couleur dynamique à l'ouverture
+    updateModalColor();
     
     var myModal = new bootstrap.Modal(document.getElementById('fastAddModal'));
     myModal.show();
