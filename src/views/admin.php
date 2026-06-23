@@ -134,9 +134,6 @@
                         <?php if(isset($_GET['json_user_success'])): ?>
                             <div class="alert alert-success small py-2"><i class="bi bi-check-circle"></i> Fichier users.json mis à jour.</div>
                         <?php endif; ?>
-                        <?php if(isset($_GET['json_user_error'])): ?>
-                            <div class="alert alert-danger small py-2"><i class="bi bi-exclamation-triangle-fill"></i> Erreur de syntaxe JSON. Sauvegarde annulée.</div>
-                        <?php endif; ?>
 
                         <div class="alert alert-light border small py-2 mb-3">
                             <h6 class="fw-bold mb-2"><i class="bi bi-info-circle-fill text-info"></i> Guide des propriétés JSON :</h6>
@@ -242,9 +239,6 @@
                         <?php if(isset($_GET['json_success'])): ?>
                             <div class="alert alert-success small py-2"><i class="bi bi-check-circle"></i> Fichier tasks.json mis à jour avec succès.</div>
                         <?php endif; ?>
-                        <?php if(isset($_GET['json_error'])): ?>
-                            <div class="alert alert-danger small py-2"><i class="bi bi-exclamation-triangle-fill"></i> <strong>Erreur de syntaxe JSON.</strong> L'enregistrement a été annulé.</div>
-                        <?php endif; ?>
 
                         <div class="alert alert-light border small py-2 mb-3">
                             <h6 class="fw-bold mb-2"><i class="bi bi-info-circle-fill text-warning"></i> Guide des propriétés JSON :</h6>
@@ -335,6 +329,31 @@ if ($_SESSION['role'] === 'admin'):
 endif; 
 ?>
 
+<?php if((isset($_GET['json_error']) || isset($_GET['json_user_error'])) && !empty($_SESSION['json_error_msg'])): ?>
+<div class="modal fade" id="jsonErrorModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header bg-danger text-white py-2">
+        <h6 class="modal-title mb-0 fw-bold"><i class="bi bi-exclamation-octagon-fill me-2"></i> Échec de l'enregistrement</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body bg-light p-4 text-center">
+          <i class="bi bi-x-circle text-danger mb-3" style="font-size: 3rem; display: block;"></i>
+          <h6 class="fw-bold text-dark mb-3">Impossible de sauvegarder le fichier JSON</h6>
+          <div class="text-danger small fw-bold bg-white border border-danger p-2 rounded text-start" style="font-family: monospace;">
+              > <?= htmlspecialchars($_SESSION['json_error_msg']) ?>
+          </div>
+      </div>
+      <div class="modal-footer border-0 bg-light justify-content-center pt-0">
+        <button type="button" class="btn btn-secondary btn-sm fw-bold px-4 shadow-sm" data-bs-dismiss="modal">Fermer et corriger</button>
+      </div>
+    </div>
+  </div>
+</div>
+<?php 
+    unset($_SESSION['json_error_msg']); 
+endif; ?>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function() {
@@ -343,14 +362,18 @@ document.addEventListener("DOMContentLoaded", function() {
         return new bootstrap.Tooltip(tooltipTriggerEl);
     });
 
-    <?php if(isset($_GET['json_error']) || isset($_GET['json_success'])): ?>
-        var jsonTab = new bootstrap.Tab(document.getElementById('json-tab'));
-        jsonTab.show();
-    <?php endif; ?>
-
-    <?php if(isset($_GET['json_user_error']) || isset($_GET['json_user_success'])): ?>
-        var jsonUserTab = new bootstrap.Tab(document.getElementById('user-json-tab'));
-        jsonUserTab.show();
+    <?php if(isset($_GET['json_error']) || isset($_GET['json_user_error'])): ?>
+        <?php if(isset($_GET['json_error'])): ?>
+            var jsonTab = new bootstrap.Tab(document.getElementById('json-tab'));
+            jsonTab.show();
+        <?php endif; ?>
+        <?php if(isset($_GET['json_user_error'])): ?>
+            var jsonUserTab = new bootstrap.Tab(document.getElementById('user-json-tab'));
+            jsonUserTab.show();
+        <?php endif; ?>
+        
+        var errorModal = new bootstrap.Modal(document.getElementById('jsonErrorModal'));
+        errorModal.show();
     <?php endif; ?>
 });
 </script>
