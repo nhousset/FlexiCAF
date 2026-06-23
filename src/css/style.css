@@ -53,6 +53,75 @@ body {
 }
 
 /* ==========================================
+   MENU DÉROULANT UTILISATEUR & AVATAR
+   ========================================== */
+.hover-opacity-100:hover { opacity: 1 !important; }
+
+/* L'avatar avec l'initiale */
+.avatar-circle {
+    width: 32px;
+    height: 32px;
+    background: var(--primary-grad);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 0.9rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+/* Le bouton qui déclenche le menu */
+.user-dropdown-toggle {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 50px;
+    padding: 4px 16px 4px 4px;
+    color: white;
+    transition: all 0.3s ease;
+}
+.user-dropdown-toggle:hover, .user-dropdown-toggle[aria-expanded="true"] {
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+}
+.user-dropdown-toggle::after {
+    margin-left: 10px;
+    vertical-align: middle;
+}
+
+/* La boite du menu déroulant */
+.dropdown-menu-custom {
+    border-radius: 12px;
+    border: 1px solid rgba(0,0,0,0.08);
+    box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+    padding: 8px 0;
+    min-width: 240px;
+    animation: fadeInDropdown 0.2s ease-out;
+}
+@keyframes fadeInDropdown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Les liens du menu */
+.dropdown-menu-custom .dropdown-item {
+    padding: 10px 20px;
+    font-weight: 600;
+    color: #475569;
+    transition: all 0.2s;
+}
+.dropdown-menu-custom .dropdown-item:hover {
+    background-color: #f8fafc;
+    color: #a855f7;
+    padding-left: 24px; /* Effet de glissement vers la droite au survol */
+}
+.dropdown-menu-custom .dropdown-item.text-danger:hover {
+    background-color: #fef2f2;
+    color: #ef4444 !important;
+}
+
+/* ==========================================
    CARTES (Glassmorphism & Shadows)
    ========================================== */
 .card {
