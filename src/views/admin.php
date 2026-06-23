@@ -217,7 +217,7 @@
                         <div class="table-responsive">
                             <table class="table table-sm align-middle small">
                                 <tbody>
-                                    <?php foreach(getDb(FILE_TASKS) as $t): 
+                                    <?php foreach(getDb(FILE_TASKS) as $id => $t): 
                                         $color = $t['color'] ?? '#e2e8f0';
                                         $type = $t['type'] ?? 'Technique';
                                     ?>
@@ -227,7 +227,10 @@
                                                 <strong><?= htmlspecialchars($t['title']) ?></strong>
                                                 <span class="badge bg-light text-dark border ms-1" style="font-size: 0.6rem;"><?= htmlspecialchars($type) ?></span>
                                             </td>
-                                            <td class="text-end"><span class="badge badge-itbm"><?= htmlspecialchars($t['itbm']) ?></span></td>
+                                            <td class="text-end">
+                                                <span class="badge badge-itbm me-2"><?= htmlspecialchars($t['itbm']) ?></span>
+                                                <button class="btn btn-sm btn-outline-secondary py-0 px-1" data-bs-toggle="modal" data-bs-target="#editTaskModal-<?= $id ?>" title="Modifier l'activité"><i class="bi bi-pencil-fill"></i></button>
+                                            </td>
                                         </tr>
                                     <?php endforeach; ?>
                                 </tbody>
@@ -316,6 +319,67 @@ if ($_SESSION['role'] === 'admin'):
                   <input class="form-check-input" type="checkbox" name="u_is_excluded" id="editExcl-<?= $id ?>" <?= $is_excluded ? 'checked' : '' ?>>
                   <label class="form-check-label small text-danger" for="editExcl-<?= $id ?>">Masquer du Capacity Planning</label>
                 </div>
+            </div>
+            
+            <button type="submit" class="btn btn-primary btn-sm w-100">Enregistrer les modifications</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+<?php 
+    endforeach; 
+endif; 
+?>
+
+<?php 
+if ($_SESSION['role'] === 'admin' || hasPermission('can_manage_tasks')): 
+    foreach(getDb(FILE_TASKS) as $id => $t): 
+        $color = $t['color'] ?? '#e2e8f0';
+        $type = $t['type'] ?? 'Technique';
+?>
+<div class="modal fade" id="editTaskModal-<?= $id ?>" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-light py-2">
+        <h6 class="modal-title mb-0">Modifier l'activité : <?= htmlspecialchars($t['title']) ?></h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form method="POST">
+            <input type="hidden" name="edit_task" value="1">
+            <input type="hidden" name="task_id" value="<?= $id ?>">
+            
+            <div class="mb-2">
+                <label class="small fw-bold">Titre affiché au planning</label>
+                <input type="text" name="t_title" class="form-control form-control-sm" value="<?= htmlspecialchars($t['title']) ?>" required>
+            </div>
+            
+            <div class="row">
+                <div class="col-8 mb-2">
+                    <label class="small fw-bold">Type</label>
+                    <select name="t_type" class="form-select form-select-sm" required>
+                        <option value="Fonctionnel" <?= $type === 'Fonctionnel' ? 'selected' : '' ?>>Fonctionnel</option>
+                        <option value="Technique" <?= $type === 'Technique' ? 'selected' : '' ?>>Technique</option>
+                        <option value="Structure" <?= $type === 'Structure' ? 'selected' : '' ?>>Structure</option>
+                        <option value="Formation" <?= $type === 'Formation' ? 'selected' : '' ?>>Formation</option>
+                        <option value="Absences" <?= $type === 'Absences' ? 'selected' : '' ?>>Absences</option>
+                    </select>
+                </div>
+                <div class="col-4 mb-2">
+                    <label class="small fw-bold">Couleur</label>
+                    <input type="color" name="t_color" class="form-control form-control-sm p-1" value="<?= htmlspecialchars($color) ?>" style="height: 31px;">
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <label class="small fw-bold">Code Projet (ITBM)</label>
+                <input type="text" name="t_itbm" class="form-control form-control-sm" value="<?= htmlspecialchars($t['itbm']) ?>" required>
+            </div>
+            
+            <div class="mb-3">
+                <label class="small fw-bold">Description courte</label>
+                <input type="text" name="t_desc" class="form-control form-control-sm" value="<?= htmlspecialchars($t['desc'] ?? '') ?>">
             </div>
             
             <button type="submit" class="btn btn-primary btn-sm w-100">Enregistrer les modifications</button>
