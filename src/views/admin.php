@@ -1,3 +1,40 @@
+<?php
+// Définition de la charte graphique : 10 couleurs pastel modernes
+$pastel_colors = [
+    '#fca5a5', // Rouge pastel
+    '#fdba74', // Orange pastel
+    '#fde047', // Jaune pastel
+    '#86efac', // Vert pastel
+    '#5eead4', // Menthe pastel
+    '#67e8f9', // Cyan pastel
+    '#93c5fd', // Bleu pastel
+    '#a5b4fc', // Indigo pastel
+    '#d8b4fe', // Violet pastel
+    '#f9a8d4'  // Rose pastel
+];
+?>
+
+<style>
+/* Style personnalisé pour les pastilles de couleurs */
+.color-picker-label {
+    width: 28px; 
+    height: 28px; 
+    border-radius: 50%; 
+    cursor: pointer; 
+    border: 2px solid transparent; 
+    transition: all 0.2s ease;
+    display: inline-block;
+}
+.color-picker-label:hover {
+    transform: scale(1.15);
+}
+.btn-check:checked + .color-picker-label {
+    transform: scale(1.15);
+    border-color: #ffffff !important;
+    box-shadow: 0 0 0 3px #475569;
+}
+</style>
+
 <?php if(isset($_GET['zip_error'])): ?>
     <div class="alert alert-danger shadow-sm py-3 mb-4 fw-bold border-0" style="background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%); color: #991b1b; border-left: 5px solid #ef4444 !important;">
         <i class="bi bi-exclamation-triangle-fill fs-5 me-2 align-middle"></i> 
@@ -180,14 +217,15 @@
                 <div class="tab-content" id="taskAdminTabsContent">
                     
                     <div class="tab-pane fade show active" id="classic" role="tabpanel">
+                        
                         <form method="POST">
                             <input type="hidden" name="add_task" value="1">
                             <div class="row">
-                                <div class="col-6 mb-2">
+                                <div class="col-md-5 mb-2">
                                     <label class="small fw-bold">Titre affiché au planning</label>
                                     <input type="text" name="t_title" class="form-control form-control-sm" required>
                                 </div>
-                                <div class="col-4 mb-2">
+                                <div class="col-md-4 mb-2">
                                     <label class="small fw-bold">Type</label>
                                     <select name="t_type" class="form-select form-select-sm" required>
                                         <option value="Fonctionnel">Fonctionnel</option>
@@ -197,17 +235,22 @@
                                         <option value="Absences">Absences</option>
                                     </select>
                                 </div>
-                                <div class="col-2 mb-2">
-                                    <label class="small fw-bold">Couleur</label>
-                                    <input type="color" name="t_color" class="form-control form-control-sm p-1" value="#bae6fd" style="height: 31px;">
-                                </div>
-                                <div class="col-4 mb-3">
+                                <div class="col-md-3 mb-2">
                                     <label class="small fw-bold">Code Projet</label>
                                     <input type="text" name="t_itbm" class="form-control form-control-sm" placeholder="PRJ-XXX" required>
                                 </div>
-                                <div class="col-8 mb-3">
+                                <div class="col-12 mb-2">
                                     <label class="small fw-bold">Description courte</label>
                                     <input type="text" name="t_desc" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-12 mb-4 mt-2">
+                                    <label class="small fw-bold mb-2">Couleur de la charte graphique</label>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        <?php foreach($pastel_colors as $index => $col): ?>
+                                            <input type="radio" class="btn-check" name="t_color" id="add_color_<?= $index ?>" value="<?= $col ?>" <?= $index === 6 ? 'checked' : '' ?> required>
+                                            <label class="color-picker-label shadow-sm" style="background-color: <?= $col ?>;" for="add_color_<?= $index ?>"></label>
+                                        <?php endforeach; ?>
+                                    </div>
                                 </div>
                             </div>
                             <button type="submit" class="btn btn-secondary btn-sm w-100 fw-bold">Ajouter au référentiel</button>
@@ -342,7 +385,7 @@ if ($_SESSION['role'] === 'admin' || hasPermission('can_manage_tasks')):
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header bg-light py-2">
-        <h6 class="modal-title mb-0">Modifier l'activité : <?= htmlspecialchars($t['title']) ?></h6>
+        <h6 class="modal-title mb-0">Modifier l'activité : <span class="text-primary"><?= htmlspecialchars($t['title']) ?></span></h6>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
@@ -356,7 +399,7 @@ if ($_SESSION['role'] === 'admin' || hasPermission('can_manage_tasks')):
             </div>
             
             <div class="row">
-                <div class="col-8 mb-2">
+                <div class="col-6 mb-2">
                     <label class="small fw-bold">Type</label>
                     <select name="t_type" class="form-select form-select-sm" required>
                         <option value="Fonctionnel" <?= $type === 'Fonctionnel' ? 'selected' : '' ?>>Fonctionnel</option>
@@ -366,23 +409,35 @@ if ($_SESSION['role'] === 'admin' || hasPermission('can_manage_tasks')):
                         <option value="Absences" <?= $type === 'Absences' ? 'selected' : '' ?>>Absences</option>
                     </select>
                 </div>
-                <div class="col-4 mb-2">
-                    <label class="small fw-bold">Couleur</label>
-                    <input type="color" name="t_color" class="form-control form-control-sm p-1" value="<?= htmlspecialchars($color) ?>" style="height: 31px;">
+                <div class="col-6 mb-2">
+                    <label class="small fw-bold">Code Projet (ITBM)</label>
+                    <input type="text" name="t_itbm" class="form-control form-control-sm" value="<?= htmlspecialchars($t['itbm']) ?>" required>
                 </div>
-            </div>
-            
-            <div class="mb-3">
-                <label class="small fw-bold">Code Projet (ITBM)</label>
-                <input type="text" name="t_itbm" class="form-control form-control-sm" value="<?= htmlspecialchars($t['itbm']) ?>" required>
             </div>
             
             <div class="mb-3">
                 <label class="small fw-bold">Description courte</label>
                 <input type="text" name="t_desc" class="form-control form-control-sm" value="<?= htmlspecialchars($t['desc'] ?? '') ?>">
             </div>
+
+            <div class="mb-4">
+                <label class="small fw-bold d-block mb-2">Couleur de la charte graphique</label>
+                <div class="d-flex flex-wrap gap-2">
+                    <?php 
+                    // Vérifie si la couleur actuelle fait partie de la charte
+                    $found = in_array($color, $pastel_colors);
+                    
+                    foreach($pastel_colors as $index => $col): 
+                        // Coche la couleur actuelle, ou la 1ère par défaut si ancienne couleur non chartée
+                        $isChecked = ($color === $col || (!$found && $index === 0)) ? 'checked' : '';
+                    ?>
+                        <input type="radio" class="btn-check" name="t_color" id="edit_color_<?= $id ?>_<?= $index ?>" value="<?= $col ?>" <?= $isChecked ?> required>
+                        <label class="color-picker-label shadow-sm" style="background-color: <?= $col ?>;" for="edit_color_<?= $id ?>_<?= $index ?>"></label>
+                    <?php endforeach; ?>
+                </div>
+            </div>
             
-            <button type="submit" class="btn btn-primary btn-sm w-100">Enregistrer les modifications</button>
+            <button type="submit" class="btn btn-primary btn-sm w-100 fw-bold">Enregistrer les modifications</button>
         </form>
       </div>
     </div>
