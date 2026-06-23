@@ -7,6 +7,29 @@ if (function_exists('getDb') && defined('FILE_SETTINGS') && file_exists(FILE_SET
 
 // Si un nom est défini on l'utilise, sinon on garde FlexiCAF par défaut
 $appName = !empty($appSettings['app_name']) ? htmlspecialchars($appSettings['app_name']) : 'FlexiCAF';
+
+// =========================================================================
+// CALCULS DES DATES POUR LE "À PROPOS"
+// =========================================================================
+
+// 1. Version : Date du fichier PHP le plus récent
+$phpFiles = array_merge(
+    glob(__DIR__ . '/../*.php') ?: [], 
+    glob(__DIR__ . '/*.php') ?: [], 
+    glob(__DIR__ . '/../views/*.php') ?: []
+);
+$maxMtimePhp = 0;
+foreach ($phpFiles as $f) {
+    if (file_exists($f)) {
+        $m = filemtime($f);
+        if ($m > $maxMtimePhp) $maxMtimePhp = $m;
+    }
+}
+$versionDate = $maxMtimePhp > 0 ? date('d/m/Y', $maxMtimePhp) : 'Inconnue';
+
+// 2. Données : Date de modification de data.json
+$dataDate = (defined('FILE_DATA') && file_exists(FILE_DATA)) ? date('d/m/Y à H:i', filemtime(FILE_DATA)) : 'Inconnue';
+// =========================================================================
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -106,12 +129,15 @@ $appName = !empty($appSettings['app_name']) ? htmlspecialchars($appSettings['app
         <div class="mb-3">
             <span class="brand-logo-icon" style="font-size: 2rem; padding: 10px 16px;"><i class="bi bi-layers-fill"></i></span>
         </div>
-        <h5 class="fw-bold mb-1"><?= $appName ?></h5>
+        <!-- Nom figé comme demandé -->
+        <h5 class="fw-bold mb-1">FlexiCAF</h5>
         <p class="text-muted small mb-3">Outil de Pilotage et de Capacity Planning.</p>
         
-        <div class="bg-light rounded p-2 mb-0 border">
-            <span class="d-block small text-dark">Version 1.0</span>
-            <span class="d-block small fw-bold text-primary mt-1">&copy; <?= date('Y') ?> Nicolas Housset</span>
+        <div class="bg-light rounded p-2 mb-0 border text-start">
+            <span class="d-block small text-dark"><i class="bi bi-code-slash me-1"></i> Version du : <strong><?= $versionDate ?></strong></span>
+            <span class="d-block small text-dark mt-1"><i class="bi bi-database me-1"></i> Planning MAJ : <strong><?= $dataDate ?></strong></span>
+            <hr class="my-2">
+            <span class="d-block small fw-bold text-primary text-center">&copy; <?= date('Y') ?> Nicolas Housset</span>
         </div>
       </div>
     </div>
