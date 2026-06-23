@@ -162,7 +162,6 @@ if ($action === 'admin' && ($_SESSION['role'] === 'admin' || hasPermission('can_
                 }
             }
 
-            // GESTION ERREURS JSON UTILISATEURS
             if (isset($_POST['update_users_json'])) {
                 $raw_json = trim($_POST['raw_users_json']);
                 $decoded = json_decode($raw_json, true);
@@ -200,7 +199,21 @@ if ($action === 'admin' && ($_SESSION['role'] === 'admin' || hasPermission('can_
             header('Location: ?action=admin'); exit;
         }
 
-        // GESTION ERREURS JSON TACHES (CATALOGUE)
+        // --- NOUVEAU BLOC : ÉDITION D'UNE TÂCHE ---
+        if (isset($_POST['edit_task'])) {
+            $tasks = getDb(FILE_TASKS);
+            $tid = $_POST['task_id'];
+            if (isset($tasks[$tid])) {
+                $tasks[$tid]['title'] = $_POST['t_title'];
+                $tasks[$tid]['type']  = $_POST['t_type'];
+                $tasks[$tid]['color'] = $_POST['t_color'];
+                $tasks[$tid]['itbm']  = $_POST['t_itbm'];
+                $tasks[$tid]['desc']  = $_POST['t_desc'];
+                saveDb(FILE_TASKS, $tasks);
+            }
+            header('Location: ?action=admin'); exit;
+        }
+
         if (isset($_POST['update_tasks_json'])) {
             $raw_json = trim($_POST['raw_tasks_json']);
             $decoded = json_decode($raw_json, true);
