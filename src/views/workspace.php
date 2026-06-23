@@ -195,7 +195,7 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
                         <?php foreach($dash_months as $m_key => $m_data): ?>
                             <th style="min-width: 120px;">
                                 <div class="fs-6 fw-bold text-dark"><?= $m_data['label'] ?></div>
-                                <div class="small text-muted fw-normal" style="font-size: 0.65rem;">Max: <?= $m_data['working_days'] ?> JH</div>
+                                <div class="small text-muted fw-normal" style="font-size: 0.65rem;">Max: <?= $m_data['working_days'] ?></div>
                             </th>
                         <?php endforeach; ?>
                     </tr>
@@ -244,7 +244,7 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
                                 onclick="openDetailModal('<?= addslashes(htmlspecialchars($uname)) ?>', '<?= $m_key ?>', this)"
                                 data-details="<?= $details_json ?>">
                                 <?php if($valeur > 0): ?>
-                                    <div class="fs-6"><?= $valeur ?> <small>JH</small></div>
+                                    <div class="fs-6"><?= $valeur ?></div>
                                     <?php if(!$isVirtual): ?>
                                         <div style="font-size: 0.65rem; opacity: 0.8;"><?= round(($valeur/$cap_max)*100) ?>% Alloué</div>
                                     <?php endif; ?>
@@ -269,7 +269,7 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
                             $style = getMonthlyHeatmapStyle($total_load, $total_cap, false);
                         ?>
                             <td style="<?= $style ?>">
-                                <div class="fs-6"><?= $total_load ?> JH</div>
+                                <div class="fs-6"><?= $total_load ?></div>
                                 <div style="font-size: 0.65rem; opacity: 0.8;"><?= $perc ?>% (sur <?= $total_cap ?>)</div>
                             </td>
                         <?php endforeach; ?>
@@ -343,7 +343,7 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
                                     <?php endif; ?>>
                                     
                                     <?php if($valeur > 0): ?>
-                                        <span class="badge bg-success px-2 py-1 fs-6"><?= $valeur ?> JH</span>
+                                        <span class="badge bg-success px-2 py-1 fs-6"><?= $valeur ?></span>
                                     <?php else: ?>
                                         <span class="text-muted" style="opacity: 0.15;">—</span>
                                     <?php endif; ?>
@@ -363,7 +363,7 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
                             $style = getMonthlyHeatmapStyle($total_load, $cap_max, ($detail_uid === '_virtual_unassigned_'));
                         ?>
                             <td style="<?= $style ?>">
-                                <div class="fs-6"><?= $total_load ?> JH</div>
+                                <div class="fs-6"><?= $total_load ?></div>
                                 <?php if($cap_max > 0): ?>
                                     <div style="font-size: 0.65rem; opacity: 0.8;"><?= $perc ?>% (sur <?= $cap_max ?>)</div>
                                 <?php endif; ?>
@@ -414,7 +414,7 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
                                 <?php endif; ?>>
                                 
                                 <?php if($valeur > 0): ?>
-                                    <span class="badge bg-primary px-2 py-1 fs-6"><?= $valeur ?> JH</span>
+                                    <span class="badge bg-primary px-2 py-1 fs-6"><?= $valeur ?></span>
                                 <?php else: ?>
                                     <span class="text-muted" style="opacity: 0.2;">—</span>
                                 <?php endif; ?>
@@ -435,7 +435,7 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
                             $style = getMonthlyHeatmapStyle($total_load, $total_cap, false);
                         ?>
                             <td style="<?= $style ?>">
-                                <div class="fs-6"><?= $total_load ?> JH</div>
+                                <div class="fs-6"><?= $total_load ?></div>
                                 <div style="font-size: 0.65rem; opacity: 0.8;"><?= $perc ?>% (sur <?= $total_cap ?>)</div>
                             </td>
                         <?php endforeach; ?>
@@ -447,7 +447,7 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
 
     <div class="tab-pane fade" id="vue3" role="tabpanel">
         <div class="alert alert-light border small py-2 mb-3">
-            <i class="bi bi-info-square"></i> Cette vue agrège l'effort total (en JH) de chaque consultant sur la période affichée (les 6 mois).
+            <i class="bi bi-info-square"></i> Cette vue agrège l'effort total de chaque consultant sur la période affichée (les 6 mois).
         </div>
         <div class="table-responsive">
             <table class="table table-bordered table-hover align-middle mb-0 text-center">
@@ -479,7 +479,7 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
                             $valeur = $pivot_task_user[$tid][$uid] ?? 0;
                         ?>
                             <td style="<?= $valeur > 0 ? 'background-color: #f0fdf4; color: #166534; font-weight: bold;' : '' ?>">
-                                <?= $valeur > 0 ? $valeur . ' JH' : '<span class="text-muted" style="opacity: 0.2;">—</span>' ?>
+                                <?= $valeur > 0 ? $valeur : '<span class="text-muted" style="opacity: 0.2;">—</span>' ?>
                             </td>
                         <?php endforeach; ?>
                     </tr>
@@ -495,7 +495,7 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
                             $style = getMonthlyHeatmapStyle($total_load, $total_cap_6m, ($uid === '_virtual_unassigned_'));
                         ?>
                             <td style="<?= $style ?>">
-                                <div class="fs-6"><?= $total_load ?> JH</div>
+                                <div class="fs-6"><?= $total_load ?></div>
                                 <?php if($total_cap_6m > 0): ?>
                                     <div style="font-size: 0.65rem; opacity: 0.8;"><?= $perc ?>% (sur <?= $total_cap_6m ?>)</div>
                                 <?php endif; ?>
@@ -547,10 +547,9 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
                                     <input type="month" name="month_saisie" class="form-control fw-bold text-primary" value="<?= date('Y-m') ?>" required>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label small fw-bold">Volume (Jours-Hommes)</label>
+                                    <label class="form-label small fw-bold">Volume</label>
                                     <div class="input-group">
                                         <input type="text" inputmode="decimal" pattern="^[0-9]*([.,][0-9]+)?$" name="valeur" class="form-control fw-bold text-center" value="1" placeholder="ex: 0.5" required>
-                                        <span class="input-group-text bg-light">JH</span>
                                     </div>
                                 </div>
                             </div>
@@ -615,10 +614,14 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
             </div>
             
             <div class="mb-3">
-                <label class="form-label small fw-bold text-muted">Volume (0 pour effacer) :</label>
+                <label class="form-label small fw-bold text-muted d-flex justify-content-between">
+                    <span>Volume (0 pour effacer) :</span>
+                </label>
+                
+                <input type="range" class="form-range mb-2" id="valeur_slider" min="0" max="10" step="0.1" value="1" oninput="syncValeur(this.value, 'slider')">
+                
                 <div class="input-group input-group-sm">
-                    <input type="text" inputmode="decimal" pattern="^[0-9]*([.,][0-9]+)?$" name="valeur" class="form-control text-center fw-bold" value="1" placeholder="ex: 0.5" required>
-                    <span class="input-group-text bg-white">JH</span>
+                    <input type="text" inputmode="decimal" pattern="^[0-9]*([.,][0-9]+)?$" name="valeur" id="valeur_input" class="form-control text-center fw-bold" value="1" placeholder="ex: 0.5" required oninput="syncValeur(this.value, 'input')">
                 </div>
             </div>
 
@@ -680,6 +683,18 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 });
 
+// Fonction pour synchroniser le slider et le champ texte
+function syncValeur(val, source) {
+    let v = val.toString().replace(',', '.');
+    if (source === 'slider') {
+        document.getElementById('valeur_input').value = v;
+    } else if (source === 'input') {
+        if(!isNaN(v) && v !== '') {
+            document.getElementById('valeur_slider').value = v;
+        }
+    }
+}
+
 function updateModalColor() {
     const select = document.getElementById('modal_task_id');
     const header = document.getElementById('fastAddModalHeader');
@@ -698,11 +713,9 @@ function updateModalColor() {
             const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
             
             if (yiq >= 128) {
-                // Fond clair -> Texte sombre
                 header.style.color = '#1e293b'; 
                 closeBtn.classList.remove('btn-close-white');
             } else {
-                // Fond sombre -> Texte clair
                 header.style.color = '#ffffff';
                 closeBtn.classList.add('btn-close-white');
             }
@@ -738,7 +751,10 @@ function openFastModal(uid, uname, monthKey, taskId = '') {
         taskSelect.value = '';
     }
     
-    // Met à jour la couleur dynamique à l'ouverture
+    // Reset valeurs à 1 par défaut
+    document.getElementById('valeur_slider').value = 1;
+    document.getElementById('valeur_input').value = 1;
+    
     updateModalColor();
     
     var myModal = new bootstrap.Modal(document.getElementById('fastAddModal'));
@@ -773,14 +789,14 @@ function openDetailModal(uname, monthKey, cellElement) {
                             </div>
                         </div>
                     </td>
-                    <td class="text-center fw-bold">${d.val} JH</td>
+                    <td class="text-center fw-bold">${d.val}</td>
                 </tr>
             `;
         });
     } else {
         tbody.innerHTML = '<tr><td colspan="2" class="text-center text-muted small py-3">Aucune charge affectée ce mois-ci.</td></tr>';
     }
-    document.getElementById('detail_modal_total').innerText = total + ' JH';
+    document.getElementById('detail_modal_total').innerText = total;
 
     var myModal = new bootstrap.Modal(document.getElementById('detailModal'));
     myModal.show();
