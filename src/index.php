@@ -84,19 +84,21 @@ if ($action === 'home' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST[
 // ---------------------------------------------------------
 if ($action === 'admin' && ($_SESSION['role'] === 'admin' || hasPermission('can_manage_tasks'))) {
     
-    // MOTEUR DE TELECHARGEMENT BACKUP ZIP
     if (isset($_GET['download_all']) && $_SESSION['role'] === 'admin') {
         if (!class_exists('ZipArchive')) {
             header('Location: ?action=admin&zip_error=1'); 
             exit;
         }
 
+        $settings = getDb(FILE_SETTINGS);
+        $teamName = !empty($settings['app_name']) ? $settings['app_name'] : 'FlexiCAF';
+        $safeTeamName = preg_replace('/[^a-z0-9]/i', '_', $teamName);
+
         $zip = new ZipArchive();
-        $zipname = 'backup_' . date('Y-m-d') . '.zip';
+        $zipname = 'backup_' . $safeTeamName . '_' . date('Y-m-d') . '.zip';
         $zip_path = sys_get_temp_dir() . '/' . $zipname;
 
         if ($zip->open($zip_path, ZipArchive::CREATE | ZipArchive::OVERWRITE) === TRUE) {
-            // Ajout de settings.json à la sauvegarde globale
             $files_to_zip = ['users.json', 'tasks.json', 'data.json', 'admin.json', 'settings.json'];
             
             foreach ($files_to_zip as $file) {
@@ -121,11 +123,9 @@ if ($action === 'admin' && ($_SESSION['role'] === 'admin' || hasPermission('can_
         }
     }
 
-    // TRAITEMENTS FORMULAIRES
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($_SESSION['role'] === 'admin') {
             
-            // Paramètres globaux (Nom de l'app)
             if (isset($_POST['update_settings'])) {
                 $settings = getDb(FILE_SETTINGS);
                 $settings['app_name'] = trim($_POST['app_name']);
@@ -162,14 +162,30 @@ if ($action === 'admin' && ($_SESSION['role'] === 'admin' || hasPermission('can_
                 }
             }
 
+            // GESTION ERREURS JSON UTILISATEURS
             if (isset($_POST['update_users_json'])) {
                 $raw_json = trim($_POST['raw_users_json']);
                 $decoded = json_decode($raw_json, true);
-                if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                    saveDb(FILE_USERS, $decoded);
-                    header('Location: ?action=admin&json_user_success=1'); exit;
-                } else {
+                
+                if (json_last_error() !== JSON_ERROR_NONE) {
+                    $_SESSION['json_error_msg'] = "Syntaxe JSON invalide : " . json_last_error_msg();
                     header('Location: ?action=admin&json_user_error=1'); exit;
+                } elseif (!is_array($decoded)) {
+                    $_SESSION['json_error_msg'] = "La structure JSON est incorrecte (doit être un tableau ou un objet).";
+                    header('Location: ?action=admin&json_user_error=1'); exit;
+                } else {
+                    if (file_exists(FILE_USERS) && !is_writable(FILE_USERS)) {
+                        $_SESSION['json_error_msg'] = "Droits insuffisants : le fichier users.json n'est pas accessible en écriture.";
+                        header('Location: ?action=admin&json_user_error=1'); exit;
+                    }
+                    
+                    $result = @file_put_contents(FILE_USERS, json_encode($decoded, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+                    if ($result === false) {
+                        $_SESSION['json_error_msg'] = "Erreur système lors de l'écriture sur le disque.";
+                        header('Location: ?action=admin&json_user_error=1'); exit;
+                    }
+                    
+                    header('Location: ?action=admin&json_user_success=1'); exit;
                 }
             }
         }
@@ -184,14 +200,30 @@ if ($action === 'admin' && ($_SESSION['role'] === 'admin' || hasPermission('can_
             header('Location: ?action=admin'); exit;
         }
 
+        // GESTION ERREURS JSON TACHES (CATALOGUE)
         if (isset($_POST['update_tasks_json'])) {
             $raw_json = trim($_POST['raw_tasks_json']);
             $decoded = json_decode($raw_json, true);
-            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                saveDb(FILE_TASKS, $decoded);
-                header('Location: ?action=admin&json_success=1'); exit;
-            } else {
+            
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                $_SESSION['json_error_msg'] = "Syntaxe JSON invalide : " . json_last_error_msg();
                 header('Location: ?action=admin&json_error=1'); exit;
+            } elseif (!is_array($decoded)) {
+                $_SESSION['json_error_msg'] = "La structure JSON est incorrecte (doit être un tableau ou un objet).";
+                header('Location: ?action=admin&json_error=1'); exit;
+            } else {
+                if (file_exists(FILE_TASKS) && !is_writable(FILE_TASKS)) {
+                    $_SESSION['json_error_msg'] = "Droits insuffisants : le fichier tasks.json n'est pas modifiable (vérifiez le CHMOD).";
+                    header('Location: ?action=admin&json_error=1'); exit;
+                }
+                
+                $result = @file_put_contents(FILE_TASKS, json_encode($decoded, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+                if ($result === false) {
+                    $_SESSION['json_error_msg'] = "Erreur système lors de l'écriture sur le disque.";
+                    header('Location: ?action=admin&json_error=1'); exit;
+                }
+                
+                header('Location: ?action=admin&json_success=1'); exit;
             }
         }
     }
