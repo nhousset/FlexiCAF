@@ -6,7 +6,8 @@ define('FILE_ADMIN', DIR_DB . 'admin.json');
 define('FILE_USERS', DIR_DB . 'users.json');
 define('FILE_TASKS', DIR_DB . 'tasks.json');
 define('FILE_DATA', DIR_DB . 'data.json');
-define('FILE_SETTINGS', DIR_DB . 'settings.json'); // NOUVEAU
+define('FILE_SETTINGS', DIR_DB . 'settings.json');
+define('FILE_AUDIT', DIR_DB . 'audit.json'); // NOUVEAU: Historique d'audit
 
 if (!is_dir(DIR_DB)) mkdir(DIR_DB, 0755, true);
 
@@ -14,6 +15,7 @@ if (!is_dir(DIR_DB)) mkdir(DIR_DB, 0755, true);
 if (!file_exists(FILE_USERS)) file_put_contents(FILE_USERS, json_encode([]));
 if (!file_exists(FILE_DATA)) file_put_contents(FILE_DATA, json_encode([]));
 if (!file_exists(FILE_SETTINGS)) file_put_contents(FILE_SETTINGS, json_encode(['app_name' => 'FlexiCAF'], JSON_PRETTY_PRINT));
+if (!file_exists(FILE_AUDIT)) file_put_contents(FILE_AUDIT, json_encode([]));
 
 if (!file_exists(FILE_TASKS)) {
     $defaultTasks = [
@@ -27,6 +29,22 @@ if (!file_exists(FILE_TASKS)) {
 
 function getDb($file) { return json_decode(file_get_contents($file), true) ?: []; }
 function saveDb($file, $data) { file_put_contents($file, json_encode($data, JSON_PRETTY_PRINT)); }
+
+// NOUVEAU: Fonction d'historisation centralisée
+function logAudit($action_type, $details) {
+    $audit = getDb(FILE_AUDIT);
+    $user = $_SESSION['name'] ?? 'Système';
+    // On ajoute au début du tableau pour avoir le plus récent en premier
+    array_unshift($audit, [
+        'date' => date('Y-m-d H:i:s'),
+        'user' => $user,
+        'action' => $action_type,
+        'details' => $details
+    ]);
+    // On limite à 500 entrées pour ne pas surcharger le fichier
+    $audit = array_slice($audit, 0, 500);
+    saveDb(FILE_AUDIT, $audit);
+}
 
 function generateDatesList($start, $end, $mode, $selectedDays = []) {
     $dates = [];
