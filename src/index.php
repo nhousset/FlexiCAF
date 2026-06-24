@@ -45,16 +45,11 @@ if ($action === 'home' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST[
     if (!hasPermission('can_saisie') && $_SESSION['role'] !== 'admin') { die("Action non autorisée."); }
 
     $task_id = $_POST['task_id'];
-    
-    // Remplacement de la virgule par un point
     $valeur = floatval(str_replace(',', '.', trim($_POST['valeur'])));
-    
     $month_saisie = $_POST['month_saisie']; 
     $edit_mode = $_POST['edit_mode'] ?? 'add'; 
-    
     $date_to_save = $month_saisie . '-01'; 
     
-    // VÉRIFICATION DE LA NOUVELLE PERMISSION
     $canSaisieOthers = hasPermission('can_saisie_others') || $_SESSION['role'] === 'admin';
     $target_user_id = (!empty($_POST['target_user_id']) && $canSaisieOthers) ? $_POST['target_user_id'] : $_SESSION['user_id'];
 
@@ -78,6 +73,14 @@ if ($action === 'home' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST[
     }
     
     saveDb(FILE_DATA, $data);
+    
+    // Log Audit
+    $tasks_for_audit = getDb(FILE_TASKS);
+    $users_for_audit = getDb(FILE_USERS);
+    $taskName = $tasks_for_audit[$task_id]['title'] ?? 'Inconnu';
+    $targetName = ($target_user_id === $_SESSION['user_id']) ? $_SESSION['name'] : ($users_for_audit[$target_user_id]['name'] ?? 'Inconnu');
+    $action_desc = ($edit_mode === 'replace') ? "Remplacement par" : "Ajout de";
+    logAudit("Saisie Planning", "$action_desc $valeur JH pour $targetName sur le projet [$taskName] (Mois: $month_saisie)");
     
     $redirect_url = '?action=home';
     if(isset($_GET['date'])) $redirect_url .= '&date='.$_GET['date'];
@@ -105,7 +108,8 @@ if ($action === 'admin' && ($_SESSION['role'] === 'admin' || hasPermission('can_
         $zip_path = sys_get_temp_dir() . '/' . $zipname;
 
         if ($zip->open($zip_path, ZipArchive::CREATE | ZipArchive::OVERWRITE) === TRUE) {
-            $files_to_zip = ['users.json', 'tasks.json', 'data.json', 'admin.json', 'settings.json'];
+            // AJOUT DU FICHIER D'AUDIT AU ZIP
+            $files_to_zip = ['users.json', 'tasks.json', 'data.json', 'admin.json', 'settings.json', 'audit.json'];
             
             foreach ($files_to_zip as $file) {
                 $filepath = DIR_DB . $file;
@@ -137,6 +141,7 @@ if ($action === 'admin' && ($_SESSION['role'] === 'admin' || hasPermission('can_
                 $settings['app_name'] = trim($_POST['app_name']);
                 if (empty($settings['app_name'])) $settings['app_name'] = 'FlexiCAF';
                 saveDb(FILE_SETTINGS, $settings);
+                logAudit("Configuration", "Modification du nom de l'application : " . $settings['app_name']);
                 header('Location: ?action=admin&settings_success=1'); exit;
             }
 
@@ -146,12 +151,13 @@ if ($action === 'admin' && ($_SESSION['role'] === 'admin' || hasPermission('can_
                     'name' => $_POST['u_name'], 'email' => $_POST['u_email'],
                     'password' => password_hash($_POST['u_pass'], PASSWORD_DEFAULT),
                     'can_saisie' => isset($_POST['u_can_saisie']),
-                    'can_saisie_others' => isset($_POST['u_can_saisie_others']), // NOUVELLE OPTION
+                    'can_saisie_others' => isset($_POST['u_can_saisie_others']),
                     'can_dashboard' => isset($_POST['u_can_dashboard']),
                     'can_manage_tasks' => isset($_POST['u_can_manage_tasks']),
                     'is_excluded' => isset($_POST['u_is_excluded'])
                 ];
                 saveDb(FILE_USERS, $users);
+                logAudit("Utilisateurs", "Création du compte : " . $_POST['u_name']);
             }
             
             if (isset($_POST['edit_user'])) {
@@ -162,11 +168,12 @@ if ($action === 'admin' && ($_SESSION['role'] === 'admin' || hasPermission('can_
                     $users[$uid]['email'] = $_POST['u_email'];
                     if (!empty($_POST['u_pass'])) $users[$uid]['password'] = password_hash($_POST['u_pass'], PASSWORD_DEFAULT);
                     $users[$uid]['can_saisie'] = isset($_POST['u_can_saisie']);
-                    $users[$uid]['can_saisie_others'] = isset($_POST['u_can_saisie_others']); // NOUVELLE OPTION
+                    $users[$uid]['can_saisie_others'] = isset($_POST['u_can_saisie_others']);
                     $users[$uid]['can_dashboard'] = isset($_POST['u_can_dashboard']);
                     $users[$uid]['can_manage_tasks'] = isset($_POST['u_can_manage_tasks']);
                     $users[$uid]['is_excluded'] = isset($_POST['u_is_excluded']);
                     saveDb(FILE_USERS, $users);
+                    logAudit("Utilisateurs", "Modification des droits/infos du compte : " . $_POST['u_name']);
                 }
             }
 
@@ -192,6 +199,7 @@ if ($action === 'admin' && ($_SESSION['role'] === 'admin' || hasPermission('can_
                         header('Location: ?action=admin&json_user_error=1'); exit;
                     }
                     
+                    logAudit("JSON Utilisateurs", "Mise à jour de la base complète en mode expert (JSON).");
                     header('Location: ?action=admin&json_user_success=1'); exit;
                 }
             }
@@ -204,6 +212,7 @@ if ($action === 'admin' && ($_SESSION['role'] === 'admin' || hasPermission('can_
                 'desc'  => $_POST['t_desc'], 'itbm' => $_POST['t_itbm'], 'color' => $_POST['t_color']
             ];
             saveDb(FILE_TASKS, $tasks);
+            logAudit("Catalogue", "Ajout de la nouvelle activité : " . $_POST['t_title']);
             header('Location: ?action=admin'); exit;
         }
 
@@ -217,6 +226,7 @@ if ($action === 'admin' && ($_SESSION['role'] === 'admin' || hasPermission('can_
                 $tasks[$tid]['itbm']  = $_POST['t_itbm'];
                 $tasks[$tid]['desc']  = $_POST['t_desc'];
                 saveDb(FILE_TASKS, $tasks);
+                logAudit("Catalogue", "Modification de l'activité : " . $_POST['t_title']);
             }
             header('Location: ?action=admin'); exit;
         }
@@ -243,6 +253,7 @@ if ($action === 'admin' && ($_SESSION['role'] === 'admin' || hasPermission('can_
                     header('Location: ?action=admin&json_error=1'); exit;
                 }
                 
+                logAudit("JSON Catalogue", "Mise à jour du catalogue complet en mode expert (JSON).");
                 header('Location: ?action=admin&json_success=1'); exit;
             }
         }
