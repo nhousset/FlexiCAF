@@ -1,40 +1,15 @@
 <?php
-// Définition de la charte graphique : 10 couleurs pastel modernes
-$pastel_colors = [
-    '#fca5a5', // Rouge pastel
-    '#fdba74', // Orange pastel
-    '#fde047', // Jaune pastel
-    '#86efac', // Vert pastel
-    '#5eead4', // Menthe pastel
-    '#67e8f9', // Cyan pastel
-    '#93c5fd', // Bleu pastel
-    '#a5b4fc', // Indigo pastel
-    '#d8b4fe', // Violet pastel
-    '#f9a8d4'  // Rose pastel
-];
+$pastel_colors = ['#fca5a5', '#fdba74', '#fde047', '#86efac', '#5eead4', '#67e8f9', '#93c5fd', '#a5b4fc', '#d8b4fe', '#f9a8d4'];
 ?>
-
 <style>
-/* Style personnalisé pour les pastilles de couleurs */
 .color-picker-label {
-    width: 28px; 
-    height: 28px; 
-    border-radius: 50%; 
-    cursor: pointer; 
-    border: 2px solid transparent; 
-    transition: all 0.2s ease;
-    display: inline-block;
+    width: 28px; height: 28px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: all 0.2s ease; display: inline-block;
 }
-.color-picker-label:hover {
-    transform: scale(1.15);
-}
-.btn-check:checked + .color-picker-label {
-    transform: scale(1.15);
-    border-color: #ffffff !important;
-    box-shadow: 0 0 0 3px #475569;
-}
+.color-picker-label:hover { transform: scale(1.15); }
+.btn-check:checked + .color-picker-label { transform: scale(1.15); border-color: #ffffff !important; box-shadow: 0 0 0 3px #475569; }
 </style>
 
+<!-- GESTION DE L'ERREUR D'EXTENSION ZIP -->
 <?php if(isset($_GET['zip_error'])): ?>
     <div class="alert alert-danger shadow-sm py-3 mb-4 fw-bold border-0" style="background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%); color: #991b1b; border-left: 5px solid #ef4444 !important;">
         <i class="bi bi-exclamation-triangle-fill fs-5 me-2 align-middle"></i> 
@@ -46,6 +21,7 @@ $pastel_colors = [
     </div>
 <?php endif; ?>
 
+<!-- EN-TÊTE DE L'ADMINISTRATION -->
 <div class="d-flex justify-content-between align-items-center mb-4 bg-white p-3 rounded shadow-sm border">
     <h5 class="mb-0 text-dark fw-bold"><i class="bi bi-shield-lock-fill text-primary"></i> Console d'Administration</h5>
     <?php if ($_SESSION['role'] === 'admin'): ?>
@@ -58,6 +34,9 @@ $pastel_colors = [
     <?php endif; ?>
 </div>
 
+<!-- ========================================================= -->
+<!-- PARAMÈTRES GLOBAUX (Nom Application)                      -->
+<!-- ========================================================= -->
 <?php if ($_SESSION['role'] === 'admin'): ?>
     <?php if(isset($_GET['settings_success'])): ?>
         <div class="alert alert-success small py-2 fw-bold"><i class="bi bi-check-circle"></i> Le nom de l'application a bien été mis à jour.</div>
@@ -82,6 +61,9 @@ $pastel_colors = [
 
 <div class="row">
     
+    <!-- ========================================================= -->
+    <!-- GESTION UTILISATEURS (Restreint au Super-Admin)           -->
+    <!-- ========================================================= -->
     <?php if ($_SESSION['role'] === 'admin'): ?>
     <div class="col-md-6">
         <div class="card border-info shadow-sm mb-4">
@@ -121,7 +103,11 @@ $pastel_colors = [
                                 <label class="small fw-bold d-block mb-2 text-muted">Droits et Paramètres</label>
                                 <div class="form-check form-switch">
                                   <input class="form-check-input" type="checkbox" name="u_can_saisie" id="canSaisie" checked>
-                                  <label class="form-check-label small" for="canSaisie">Autoriser la Saisie <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="L'utilisateur pourra déclarer de la charge."></i></label>
+                                  <label class="form-check-label small" for="canSaisie">Autoriser la Saisie <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="L'utilisateur pourra déclarer de la charge pour lui-même."></i></label>
+                                </div>
+                                <div class="form-check form-switch mt-1">
+                                  <input class="form-check-input" type="checkbox" name="u_can_saisie_others" id="canSaisieOthers">
+                                  <label class="form-check-label small text-primary fw-bold" for="canSaisieOthers">Saisie pour un Tiers <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Permet de saisir de la charge pour d'autres collaborateurs."></i></label>
                                 </div>
                                 <div class="form-check form-switch mt-1">
                                   <input class="form-check-input" type="checkbox" name="u_can_dashboard" id="canDash">
@@ -129,7 +115,7 @@ $pastel_colors = [
                                 </div>
                                 <div class="form-check form-switch mt-1">
                                   <input class="form-check-input" type="checkbox" name="u_can_manage_tasks" id="canManageTasks">
-                                  <label class="form-check-label small" for="canManageTasks">Administrateur des activités <i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" title="Permet de gérer le Catalogue de projets."></i></label>
+                                  <label class="form-check-label small" for="canManageTasks">Administrateur des activités <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Permet de gérer le Catalogue de projets."></i></label>
                                 </div>
                                 <hr class="my-2">
                                 <div class="form-check form-switch mt-1">
@@ -145,6 +131,7 @@ $pastel_colors = [
                         <ul class="list-group list-group-flush small">
                             <?php foreach(getDb(FILE_USERS) as $id => $u): 
                                 $has_saisie = isset($u['can_saisie']) ? $u['can_saisie'] : true;
+                                $has_saisie_others = isset($u['can_saisie_others']) ? $u['can_saisie_others'] : false;
                                 $has_dash = isset($u['can_dashboard']) ? $u['can_dashboard'] : false;
                                 $has_tasks_admin = isset($u['can_manage_tasks']) ? $u['can_manage_tasks'] : false;
                                 $is_excluded = isset($u['is_excluded']) ? $u['is_excluded'] : false;
@@ -158,6 +145,7 @@ $pastel_colors = [
                                     </div>
                                     <div class="text-end">
                                         <?php if($has_saisie): ?><span class="badge bg-success me-1" title="Saisie Autorisée"><i class="bi bi-pencil"></i></span><?php endif; ?>
+                                        <?php if($has_saisie_others): ?><span class="badge bg-info text-white me-1" title="Saisie pour un Tiers"><i class="bi bi-people-fill"></i></span><?php endif; ?>
                                         <?php if($has_dash): ?><span class="badge bg-primary me-1" title="Dashboard Autorisé"><i class="bi bi-bar-chart"></i></span><?php endif; ?>
                                         <?php if($has_tasks_admin): ?><span class="badge bg-dark me-2" title="Admin Activités"><i class="bi bi-tags-fill"></i></span><?php endif; ?>
                                         <button class="btn btn-sm btn-outline-secondary py-0 px-1" data-bs-toggle="modal" data-bs-target="#editUserModal-<?= $id ?>" title="Modifier"><i class="bi bi-gear-fill"></i></button>
@@ -179,6 +167,7 @@ $pastel_colors = [
                                 <li><code>email</code> : Identifiant de connexion (Texte).</li>
                                 <li><code class="text-danger">password</code> : Empreinte Bcrypt. Ne modifiez jamais cette chaîne manuellement.</li>
                                 <li><code>can_saisie</code> : Droit de déclaration de charge (<code>true</code> / <code>false</code> sans guillemets).</li>
+                                <li><code class="text-primary">can_saisie_others</code> : Droit de saisir pour d'autres collaborateurs (<code>true</code> / <code>false</code>).</li>
                                 <li><code>can_dashboard</code> : Droit de voir toute l'équipe (<code>true</code> / <code>false</code>).</li>
                                 <li><code>can_manage_tasks</code> : Droit d'éditer le catalogue (<code>true</code> / <code>false</code>).</li>
                                 <li><code>is_excluded</code> : Masquer le compte du planning (<code>true</code> / <code>false</code>).</li>
@@ -200,6 +189,9 @@ $pastel_colors = [
     </div>
     <?php endif; ?>
 
+    <!-- ========================================================= -->
+    <!-- GESTION REFERENTIEL TACHES (Super-Admin & Admin Tâches)   -->
+    <!-- ========================================================= -->
     <div class="col-md-<?= ($_SESSION['role'] === 'admin') ? '6' : '12' ?>">
         <div class="card border-secondary shadow-sm mb-4">
             <div class="card-header bg-secondary text-white"><i class="bi bi-tags-fill"></i> Catalogue des Activités</div>
@@ -217,7 +209,6 @@ $pastel_colors = [
                 <div class="tab-content" id="taskAdminTabsContent">
                     
                     <div class="tab-pane fade show active" id="classic" role="tabpanel">
-                        
                         <form method="POST">
                             <input type="hidden" name="add_task" value="1">
                             <div class="row">
@@ -312,10 +303,14 @@ $pastel_colors = [
     </div>
 </div>
 
+<!-- ========================================== -->
+<!-- ZONES DES MODALES UTILISATEURS             -->
+<!-- ========================================== -->
 <?php 
 if ($_SESSION['role'] === 'admin'): 
     foreach(getDb(FILE_USERS) as $id => $u): 
         $has_saisie = isset($u['can_saisie']) ? $u['can_saisie'] : true;
+        $has_saisie_others = isset($u['can_saisie_others']) ? $u['can_saisie_others'] : false;
         $has_dash = isset($u['can_dashboard']) ? $u['can_dashboard'] : false;
         $has_tasks_admin = isset($u['can_manage_tasks']) ? $u['can_manage_tasks'] : false;
         $is_excluded = isset($u['is_excluded']) ? $u['is_excluded'] : false;
@@ -350,6 +345,10 @@ if ($_SESSION['role'] === 'admin'):
                   <label class="form-check-label small" for="editSaisie-<?= $id ?>">Autoriser la Saisie</label>
                 </div>
                 <div class="form-check form-switch mt-1">
+                  <input class="form-check-input" type="checkbox" name="u_can_saisie_others" id="editSaisieOthers-<?= $id ?>" <?= $has_saisie_others ? 'checked' : '' ?>>
+                  <label class="form-check-label small text-primary fw-bold" for="editSaisieOthers-<?= $id ?>">Saisie pour un Tiers</label>
+                </div>
+                <div class="form-check form-switch mt-1">
                   <input class="form-check-input" type="checkbox" name="u_can_dashboard" id="editDash-<?= $id ?>" <?= $has_dash ? 'checked' : '' ?>>
                   <label class="form-check-label small" for="editDash-<?= $id ?>">Autoriser le Dashboard Manager</label>
                 </div>
@@ -375,6 +374,9 @@ if ($_SESSION['role'] === 'admin'):
 endif; 
 ?>
 
+<!-- ========================================== -->
+<!-- ZONES DES MODALES TACHES (CATALOGUE)       -->
+<!-- ========================================== -->
 <?php 
 if ($_SESSION['role'] === 'admin' || hasPermission('can_manage_tasks')): 
     foreach(getDb(FILE_TASKS) as $id => $t): 
@@ -424,11 +426,8 @@ if ($_SESSION['role'] === 'admin' || hasPermission('can_manage_tasks')):
                 <label class="small fw-bold d-block mb-2">Couleur de la charte graphique</label>
                 <div class="d-flex flex-wrap gap-2">
                     <?php 
-                    // Vérifie si la couleur actuelle fait partie de la charte
                     $found = in_array($color, $pastel_colors);
-                    
                     foreach($pastel_colors as $index => $col): 
-                        // Coche la couleur actuelle, ou la 1ère par défaut si ancienne couleur non chartée
                         $isChecked = ($color === $col || (!$found && $index === 0)) ? 'checked' : '';
                     ?>
                         <input type="radio" class="btn-check" name="t_color" id="edit_color_<?= $id ?>_<?= $index ?>" value="<?= $col ?>" <?= $isChecked ?> required>
@@ -448,6 +447,7 @@ if ($_SESSION['role'] === 'admin' || hasPermission('can_manage_tasks')):
 endif; 
 ?>
 
+<!-- MODALE ERREUR JSON GLOBALE -->
 <?php if((isset($_GET['json_error']) || isset($_GET['json_user_error'])) && !empty($_SESSION['json_error_msg'])): ?>
 <div class="modal fade" id="jsonErrorModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
