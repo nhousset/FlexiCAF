@@ -105,7 +105,7 @@ foreach($tasks as $tid => $t) {
 // --------------------------------------------------------
 // AGRÉGATION DES DONNÉES
 // --------------------------------------------------------
-$chart_type_month = []; // Pour le nouveau graphique
+$chart_type_month = []; 
 
 foreach($allData as $e) {
     $uid = $e['user_id'];
@@ -177,16 +177,15 @@ function getProjectHeatmapStyle($valeur) {
 // PRÉPARATION DONNÉES GRAPHIQUE (CHART.JS)
 // --------------------------------------------------------
 $typeColors = [
-    'Technique' => '#fef08a',   // Jaune pastel
-    'Fonctionnel' => '#bbf7d0', // Vert pastel
-    'Structure' => '#bae6fd',   // Bleu pastel
-    'Absences' => '#fca5a5',    // Rouge pastel
-    'Formation' => '#e9d5ff'    // Violet pastel
+    'Technique' => '#fef08a',   
+    'Fonctionnel' => '#bbf7d0', 
+    'Structure' => '#bae6fd',   
+    'Absences' => '#fca5a5',    
+    'Formation' => '#e9d5ff'    
 ];
 
 $chartDatasets = [];
 
-// 1. Dataset Capacité (Ligne Rouge)
 $capData = [];
 foreach($dash_months as $m_key => $m_data) {
     $capData[] = $m_data['working_days'] * $real_users_count;
@@ -195,7 +194,7 @@ $chartDatasets[] = [
     'type' => 'line',
     'label' => 'Capacité de l\'équipe',
     'data' => $capData,
-    'borderColor' => '#ef4444', // Rouge vif pour la ligne de limite
+    'borderColor' => '#ef4444', 
     'backgroundColor' => '#ef4444',
     'borderWidth' => 2,
     'fill' => false,
@@ -204,17 +203,16 @@ $chartDatasets[] = [
     'pointBackgroundColor' => '#ffffff',
     'pointBorderColor' => '#ef4444',
     'pointBorderWidth' => 2,
-    'order' => 0 // Force la ligne à s'afficher par-dessus les barres
+    'order' => 0 
 ];
 
-// 2. Datasets par Type (Barres empilées)
 foreach($chart_type_month as $type => $monthsData) {
     if(array_sum($monthsData) > 0) {
         $chartDatasets[] = [
             'type' => 'bar',
             'label' => $type,
             'data' => array_values($monthsData),
-            'backgroundColor' => $typeColors[$type] ?? '#cbd5e1', // Couleur par défaut si type inconnu
+            'backgroundColor' => $typeColors[$type] ?? '#cbd5e1', 
             'borderColor' => 'rgba(0,0,0,0.1)',
             'borderWidth' => 1,
             'order' => 1
@@ -228,21 +226,22 @@ foreach($chart_type_month as $type => $monthsData) {
    Figer l'en-tête des tableaux principaux
    ======================================================= */
 #viewTabsContent .table-responsive {
-    max-height: 70vh; /* Crée une zone de scroll interne */
+    max-height: 70vh; 
     overflow-y: auto;
 }
 #viewTabsContent .table-responsive thead th {
     position: sticky;
     top: 0;
     z-index: 100;
-    background-color: #f8fafc !important; /* Fond opaque pour masquer les lignes défilantes */
-    box-shadow: inset 0 -2px 0 #e2e8f0, 0 4px 6px -2px rgba(0,0,0,0.05); /* Ligne de séparation douce et ombre */
+    background-color: #f8fafc !important; 
+    box-shadow: inset 0 -2px 0 #e2e8f0, 0 4px 6px -2px rgba(0,0,0,0.05); 
 }
 </style>
 
 <div class="d-flex justify-content-between align-items-center mb-3 bg-white p-2 rounded shadow-sm border">
     <div>
         <a href="?action=home&date=<?= $nav_prev ?><?= isset($_GET['detail_uid']) ? '&detail_uid='.$_GET['detail_uid'] : '' ?>" class="btn btn-sm btn-light border"><i class="bi bi-chevron-double-left"></i> 6 Mois Précédents</a>
+        <a href="?action=home&date=<?= date('Y-m-01') ?><?= isset($_GET['detail_uid']) ? '&detail_uid='.$_GET['detail_uid'] : '' ?>" class="btn btn-sm btn-light border mx-1">Mois en cours</a>
         <a href="?action=home&date=<?= date('Y-m-01') ?><?= isset($_GET['detail_uid']) ? '&detail_uid='.$_GET['detail_uid'] : '' ?>" class="btn btn-sm btn-light border mx-1">Mois en cours</a>
         <a href="?action=home&date=<?= $nav_next ?><?= isset($_GET['detail_uid']) ? '&detail_uid='.$_GET['detail_uid'] : '' ?>" class="btn btn-sm btn-light border">6 Mois Suivants <i class="bi bi-chevron-double-right"></i></a>
     </div>
@@ -790,6 +789,18 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     });
 
+    // ÉVOLUTION CRUCIALE : Autofocus automatique avec effet de surbrillance de la zone de texte à l'ouverture de la modale d'affectation
+    const fastAddModalEl = document.getElementById('fastAddModal');
+    if (fastAddModalEl) {
+        fastAddModalEl.addEventListener('shown.bs.modal', function () {
+            const valInput = document.getElementById('valeur_input');
+            if (valInput) {
+                valInput.focus();  // Met le focus et active l'effet d'ombre CSS (.form-control:focus)
+                valInput.select(); // Sélectionne le texte existant pour pouvoir le remplacer instantanément sans retour arrière
+            }
+        });
+    }
+
     // Initialisation du Graphique Chart.js
     const ctx = document.getElementById('capacityChart');
     if (ctx) {
@@ -824,7 +835,6 @@ document.addEventListener("DOMContentLoaded", function() {
             }
         });
 
-        // Forcer le redimensionnement du graphique quand on ouvre l'onglet
         const graphTab = document.getElementById('vue-graph-tab');
         if (graphTab) {
             graphTab.addEventListener('shown.bs.tab', function () {
@@ -845,6 +855,7 @@ function syncValeur(val, source) {
     }
 }
 
+// ... Le reste du fichier de scripts reste inchangé et préservé à l'identique ...
 function updateModalColor() {
     const select = document.getElementById('modal_task_id');
     const header = document.getElementById('fastAddModalHeader');
