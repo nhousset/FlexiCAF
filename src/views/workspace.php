@@ -154,18 +154,33 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
     return 'background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: #ffffff; font-weight: bold; border: 1px solid #991b1b; box-shadow: inset 0 2px 4px rgba(255,255,255,0.2), 0 2px 5px rgba(239, 68, 68, 0.3); text-shadow: 0 1px 2px rgba(0,0,0,0.2);'; 
 }
 
-// Fonction de style unifiée pour le détail Consultant (Vert pastel)
 function getDetailHeatmapStyle($valeur) {
     if ($valeur == 0) return 'background-color: #ffffff;';
     return 'background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); color: #065f46; border: 1px solid #6ee7b7; box-shadow: inset 0 2px 4px rgba(255,255,255,0.5); font-weight: bold; transition: all 0.2s;'; 
 }
 
-// Fonction de style unifiée pour les Projets (Indigo pastel élégant)
 function getProjectHeatmapStyle($valeur) {
     if ($valeur == 0) return 'background-color: #ffffff;';
     return 'background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%); color: #3730a3; border: 1px solid #a5b4fc; box-shadow: inset 0 2px 4px rgba(255,255,255,0.5); font-weight: bold; transition: all 0.2s;';
 }
 ?>
+
+<style>
+/* =======================================================
+   ÉVOLUTION : Figer l'en-tête des tableaux principaux
+   ======================================================= */
+#viewTabsContent .table-responsive {
+    max-height: 70vh; /* Crée une zone de scroll interne */
+    overflow-y: auto;
+}
+#viewTabsContent .table-responsive thead th {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background-color: #f8fafc !important; /* Fond opaque pour masquer les lignes défilantes */
+    box-shadow: inset 0 -2px 0 #e2e8f0, 0 4px 6px -2px rgba(0,0,0,0.05); /* Ligne de séparation douce et ombre */
+}
+</style>
 
 <div class="d-flex justify-content-between align-items-center mb-3 bg-white p-2 rounded shadow-sm border">
     <div>
@@ -200,8 +215,6 @@ function getProjectHeatmapStyle($valeur) {
 
 <div class="tab-content bg-white border border-top-0 p-3 rounded-bottom shadow-sm" id="viewTabsContent">
 
-    <!-- ========================================================================================= -->
-    <!-- VUE 1 : CONSULTANT / MOIS -->
     <div class="tab-pane fade show active" id="vue1" role="tabpanel">
         <div class="table-responsive">
             <table class="table table-bordered table-hover text-center align-middle mb-0">
@@ -296,8 +309,6 @@ function getProjectHeatmapStyle($valeur) {
         <div class="mt-2 small text-muted"><i class="bi bi-info-circle"></i> Cliquez sur une cellule pour consulter le détail des affectations de ce mois.</div>
     </div>
 
-    <!-- ========================================================================================= -->
-    <!-- VUE DÉTAIL CONSULTANT -->
     <div class="tab-pane fade" id="vue-detail" role="tabpanel">
         
         <?php if ($_SESSION['role'] === 'admin' || $canDashboard): ?>
@@ -394,8 +405,6 @@ function getProjectHeatmapStyle($valeur) {
         </div>
     </div>
 
-    <!-- ========================================================================================= -->
-    <!-- VUE 2 : PROJET / MOIS -->
     <div class="tab-pane fade" id="vue2" role="tabpanel">
         <div class="table-responsive">
             <table class="table table-bordered table-hover align-middle mb-0">
@@ -467,8 +476,6 @@ function getProjectHeatmapStyle($valeur) {
         </div>
     </div>
 
-    <!-- ========================================================================================= -->
-    <!-- VUE 3 : PROJET / CONSULTANT -->
     <div class="tab-pane fade" id="vue3" role="tabpanel">
         <div class="alert alert-light border small py-2 mb-3">
             <i class="bi bi-info-square"></i> Cette vue agrège l'effort total de chaque consultant sur la période affichée (les 6 mois).
@@ -536,8 +543,6 @@ function getProjectHeatmapStyle($valeur) {
         </div>
     </div>
 
-    <!-- ========================================================================================= -->
-    <!-- VUE 4 : SAISIE MANUELLE LIBRE -->
     <?php if($canSaisie): ?>
     <div class="tab-pane fade mt-3" id="saisie" role="tabpanel">
         <div class="row justify-content-center">
@@ -604,7 +609,6 @@ function getProjectHeatmapStyle($valeur) {
 
 </div>
 
-<!-- MODALE D'AFFECTATION -->
 <div class="modal fade" id="fastAddModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered modal-sm">
     <div class="modal-content border-0 shadow-lg">
@@ -650,10 +654,8 @@ function getProjectHeatmapStyle($valeur) {
                     <span>Volume (0 pour effacer) :</span>
                 </label>
                 
-                <!-- Le Slider -->
                 <input type="range" class="form-range mb-2" id="valeur_slider" min="0" max="10" step="0.1" value="1" oninput="syncValeur(this.value, 'slider')">
                 
-                <!-- Le Champ Texte synchronisé -->
                 <div class="input-group input-group-sm">
                     <input type="text" inputmode="decimal" pattern="^[0-9]*([.,][0-9]+)?$" name="valeur" id="valeur_input" class="form-control text-center fw-bold" value="1" placeholder="ex: 0.5" required oninput="syncValeur(this.value, 'input')">
                 </div>
@@ -673,7 +675,6 @@ function getProjectHeatmapStyle($valeur) {
   </div>
 </div>
 
-<!-- MODALE DÉTAIL D'AFFECTATION -->
 <div class="modal fade" id="detailModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
