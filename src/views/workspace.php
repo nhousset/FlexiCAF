@@ -105,6 +105,8 @@ foreach($tasks as $tid => $t) {
 // --------------------------------------------------------
 // AGRÉGATION DES DONNÉES
 // --------------------------------------------------------
+$chart_type_month = []; // Pour le nouveau graphique
+
 foreach($allData as $e) {
     $uid = $e['user_id'];
     $tid = $e['task_id'];
@@ -122,6 +124,13 @@ foreach($allData as $e) {
                 $breakdown_user_month_task[$uid][$m_key][$tid] = 0;
             }
             $breakdown_user_month_task[$uid][$m_key][$tid] += $e['valeur_j'];
+            
+            // AGREGATION POUR LE GRAPHIQUE
+            $t_type = $tasks[$tid]['type'] ?? 'Autre';
+            if(!isset($chart_type_month[$t_type])) {
+                $chart_type_month[$t_type] = array_fill_keys(array_keys($dash_months), 0);
+            }
+            $chart_type_month[$t_type][$m_key] += $e['valeur_j'];
         }
         
         if ($uid === $detail_uid && isset($detail_grid[$tid])) {
@@ -163,11 +172,60 @@ function getProjectHeatmapStyle($valeur) {
     if ($valeur == 0) return 'background-color: #ffffff;';
     return 'background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%); color: #3730a3; border: 1px solid #a5b4fc; box-shadow: inset 0 2px 4px rgba(255,255,255,0.5); font-weight: bold; transition: all 0.2s;';
 }
+
+// --------------------------------------------------------
+// PRÉPARATION DONNÉES GRAPHIQUE (CHART.JS)
+// --------------------------------------------------------
+$typeColors = [
+    'Technique' => '#fef08a',   // Jaune pastel
+    'Fonctionnel' => '#bbf7d0', // Vert pastel
+    'Structure' => '#bae6fd',   // Bleu pastel
+    'Absences' => '#fca5a5',    // Rouge pastel
+    'Formation' => '#e9d5ff'    // Violet pastel
+];
+
+$chartDatasets = [];
+
+// 1. Dataset Capacité (Ligne Rouge)
+$capData = [];
+foreach($dash_months as $m_key => $m_data) {
+    $capData[] = $m_data['working_days'] * $real_users_count;
+}
+$chartDatasets[] = [
+    'type' => 'line',
+    'label' => 'Capacité de l\'équipe',
+    'data' => $capData,
+    'borderColor' => '#ef4444', // Rouge vif pour la ligne de limite
+    'backgroundColor' => '#ef4444',
+    'borderWidth' => 2,
+    'fill' => false,
+    'tension' => 0.3,
+    'pointRadius' => 5,
+    'pointBackgroundColor' => '#ffffff',
+    'pointBorderColor' => '#ef4444',
+    'pointBorderWidth' => 2,
+    'order' => 0 // Force la ligne à s'afficher par-dessus les barres
+];
+
+// 2. Datasets par Type (Barres empilées)
+foreach($chart_type_month as $type => $monthsData) {
+    if(array_sum($monthsData) > 0) {
+        $chartDatasets[] = [
+            'type' => 'bar',
+            'label' => $type,
+            'data' => array_values($monthsData),
+            'backgroundColor' => $typeColors[$type] ?? '#cbd5e1', // Couleur par défaut si type inconnu
+            'borderColor' => 'rgba(0,0,0,0.1)',
+            'borderWidth' => 1,
+            'order' => 1
+        ];
+    }
+}
 ?>
 
 <style>
 /* =======================================================
-   ÉVOLUTION : Figer l'en-tête des tableaux principaux
+   Figer l'en-tête des tableaux principaux
    ======================================================= */
 #viewTabsContent .table-responsive {
     max-height: 70vh; /* Crée une zone de scroll interne */
@@ -205,6 +263,9 @@ function getProjectHeatmapStyle($valeur) {
   </li>
   <li class="nav-item" role="presentation">
     <button class="nav-link" id="vue3-tab" data-bs-toggle="tab" data-bs-target="#vue3" type="button"><i class="bi bi-grid-3x3-gap-fill"></i> Projet / Consultant</button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link text-secondary fw-bold" id="vue-graph-tab" data-bs-toggle="tab" data-bs-target="#vue-graph" type="button"><i class="bi bi-bar-chart-fill"></i> Graphique</button>
   </li>
   <?php if($canSaisie): ?>
   <li class="nav-item ms-auto" role="presentation">
@@ -543,6 +604,15 @@ function getProjectHeatmapStyle($valeur) {
         </div>
     </div>
 
+    <div class="tab-pane fade" id="vue-graph" role="tabpanel">
+        <div class="alert alert-light border small py-2 mb-3 shadow-sm">
+            <i class="bi bi-info-square text-primary"></i> <strong>Aperçu analytique :</strong> Répartition de la charge globale de l'équipe par type d'activité superposée à la capacité théorique.
+        </div>
+        <div class="bg-white p-4 rounded shadow-sm border">
+            <canvas id="capacityChart" style="max-height: 500px; width: 100%;"></canvas>
+        </div>
+    </div>
+
     <?php if($canSaisie): ?>
     <div class="tab-pane fade mt-3" id="saisie" role="tabpanel">
         <div class="row justify-content-center">
@@ -705,6 +775,8 @@ function getProjectHeatmapStyle($valeur) {
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <script>
 document.addEventListener("DOMContentLoaded", function() {
     let activeTab = localStorage.getItem('activeTab_monthly');
@@ -717,6 +789,49 @@ document.addEventListener("DOMContentLoaded", function() {
             localStorage.setItem('activeTab_monthly', '#' + e.target.id);
         });
     });
+
+    // Initialisation du Graphique Chart.js
+    const ctx = document.getElementById('capacityChart');
+    if (ctx) {
+        let capacityChart = new Chart(ctx.getContext('2d'), {
+            data: {
+                labels: <?= json_encode(array_column($dash_months, 'label')) ?>,
+                datasets: <?= json_encode($chartDatasets) ?>
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { 
+                        stacked: true,
+                        grid: { display: false }
+                    },
+                    y: { 
+                        stacked: true, 
+                        beginAtZero: true, 
+                        title: { display: true, text: 'Charge (Jours)', font: {weight: 'bold'} } 
+                    }
+                },
+                plugins: {
+                    legend: { position: 'top' },
+                    tooltip: { mode: 'index', intersect: false }
+                },
+                interaction: {
+                    mode: 'nearest',
+                    axis: 'x',
+                    intersect: false
+                }
+            }
+        });
+
+        // Forcer le redimensionnement du graphique quand on ouvre l'onglet
+        const graphTab = document.getElementById('vue-graph-tab');
+        if (graphTab) {
+            graphTab.addEventListener('shown.bs.tab', function () {
+                capacityChart.resize();
+            });
+        }
+    }
 });
 
 function syncValeur(val, source) {
