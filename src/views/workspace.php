@@ -236,12 +236,18 @@ foreach($chart_type_month as $type => $monthsData) {
     background-color: #f8fafc !important; 
     box-shadow: inset 0 -2px 0 #e2e8f0, 0 4px 6px -2px rgba(0,0,0,0.05); 
 }
+
+/* =======================================================
+   ÉVOLUTION : Animation Fade plus smooth pour les onglets
+   ======================================================= */
+.tab-pane.fade {
+    transition: opacity 0.4s ease-in-out;
+}
 </style>
 
 <div class="d-flex justify-content-between align-items-center mb-3 bg-white p-2 rounded shadow-sm border">
     <div>
         <a href="?action=home&date=<?= $nav_prev ?><?= isset($_GET['detail_uid']) ? '&detail_uid='.$_GET['detail_uid'] : '' ?>" class="btn btn-sm btn-light border"><i class="bi bi-chevron-double-left"></i> 6 Mois Précédents</a>
-        <a href="?action=home&date=<?= date('Y-m-01') ?><?= isset($_GET['detail_uid']) ? '&detail_uid='.$_GET['detail_uid'] : '' ?>" class="btn btn-sm btn-light border mx-1">Mois en cours</a>
         <a href="?action=home&date=<?= date('Y-m-01') ?><?= isset($_GET['detail_uid']) ? '&detail_uid='.$_GET['detail_uid'] : '' ?>" class="btn btn-sm btn-light border mx-1">Mois en cours</a>
         <a href="?action=home&date=<?= $nav_next ?><?= isset($_GET['detail_uid']) ? '&detail_uid='.$_GET['detail_uid'] : '' ?>" class="btn btn-sm btn-light border">6 Mois Suivants <i class="bi bi-chevron-double-right"></i></a>
     </div>
@@ -789,19 +795,17 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     });
 
-    // ÉVOLUTION CRUCIALE : Autofocus automatique avec effet de surbrillance de la zone de texte à l'ouverture de la modale d'affectation
     const fastAddModalEl = document.getElementById('fastAddModal');
     if (fastAddModalEl) {
         fastAddModalEl.addEventListener('shown.bs.modal', function () {
             const valInput = document.getElementById('valeur_input');
             if (valInput) {
-                valInput.focus();  // Met le focus et active l'effet d'ombre CSS (.form-control:focus)
-                valInput.select(); // Sélectionne le texte existant pour pouvoir le remplacer instantanément sans retour arrière
+                valInput.focus();  
+                valInput.select(); 
             }
         });
     }
 
-    // Initialisation du Graphique Chart.js
     const ctx = document.getElementById('capacityChart');
     if (ctx) {
         let capacityChart = new Chart(ctx.getContext('2d'), {
@@ -855,7 +859,6 @@ function syncValeur(val, source) {
     }
 }
 
-// ... Le reste du fichier de scripts reste inchangé et préservé à l'identique ...
 function updateModalColor() {
     const select = document.getElementById('modal_task_id');
     const header = document.getElementById('fastAddModalHeader');
