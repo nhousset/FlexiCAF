@@ -9,7 +9,6 @@ $pastel_colors = ['#fca5a5', '#fdba74', '#fde047', '#86efac', '#5eead4', '#67e8f
 .btn-check:checked + .color-picker-label { transform: scale(1.15); border-color: #ffffff !important; box-shadow: 0 0 0 3px #475569; }
 </style>
 
-<!-- GESTION DE L'ERREUR D'EXTENSION ZIP -->
 <?php if(isset($_GET['zip_error'])): ?>
     <div class="alert alert-danger shadow-sm py-3 mb-4 fw-bold border-0" style="background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%); color: #991b1b; border-left: 5px solid #ef4444 !important;">
         <i class="bi bi-exclamation-triangle-fill fs-5 me-2 align-middle"></i> 
@@ -21,7 +20,6 @@ $pastel_colors = ['#fca5a5', '#fdba74', '#fde047', '#86efac', '#5eead4', '#67e8f
     </div>
 <?php endif; ?>
 
-<!-- EN-TÊTE DE L'ADMINISTRATION -->
 <div class="d-flex justify-content-between align-items-center mb-4 bg-white p-3 rounded shadow-sm border">
     <h5 class="mb-0 text-dark fw-bold"><i class="bi bi-shield-lock-fill text-primary"></i> Console d'Administration</h5>
     <?php if ($_SESSION['role'] === 'admin'): ?>
@@ -34,9 +32,6 @@ $pastel_colors = ['#fca5a5', '#fdba74', '#fde047', '#86efac', '#5eead4', '#67e8f
     <?php endif; ?>
 </div>
 
-<!-- ========================================================= -->
-<!-- PARAMÈTRES GLOBAUX (Nom Application)                      -->
-<!-- ========================================================= -->
 <?php if ($_SESSION['role'] === 'admin'): ?>
     <?php if(isset($_GET['settings_success'])): ?>
         <div class="alert alert-success small py-2 fw-bold"><i class="bi bi-check-circle"></i> Le nom de l'application a bien été mis à jour.</div>
@@ -61,9 +56,6 @@ $pastel_colors = ['#fca5a5', '#fdba74', '#fde047', '#86efac', '#5eead4', '#67e8f
 
 <div class="row">
     
-    <!-- ========================================================= -->
-    <!-- GESTION UTILISATEURS (Restreint au Super-Admin)           -->
-    <!-- ========================================================= -->
     <?php if ($_SESSION['role'] === 'admin'): ?>
     <div class="col-md-6">
         <div class="card border-info shadow-sm mb-4">
@@ -115,7 +107,7 @@ $pastel_colors = ['#fca5a5', '#fdba74', '#fde047', '#86efac', '#5eead4', '#67e8f
                                 </div>
                                 <div class="form-check form-switch mt-1">
                                   <input class="form-check-input" type="checkbox" name="u_can_manage_tasks" id="canManageTasks">
-                                  <label class="form-check-label small" for="canManageTasks">Administrateur des activités <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Permet de gérer le Catalogue de projets."></i></label>
+                                  <label class="form-check-label small" for="canManageTasks">Administrateur des activités <i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" title="Permet de gérer le Catalogue de projets."></i></label>
                                 </div>
                                 <hr class="my-2">
                                 <div class="form-check form-switch mt-1">
@@ -189,9 +181,6 @@ $pastel_colors = ['#fca5a5', '#fdba74', '#fde047', '#86efac', '#5eead4', '#67e8f
     </div>
     <?php endif; ?>
 
-    <!-- ========================================================= -->
-    <!-- GESTION REFERENTIEL TACHES (Super-Admin & Admin Tâches)   -->
-    <!-- ========================================================= -->
     <div class="col-md-<?= ($_SESSION['role'] === 'admin') ? '6' : '12' ?>">
         <div class="card border-secondary shadow-sm mb-4">
             <div class="card-header bg-secondary text-white"><i class="bi bi-tags-fill"></i> Catalogue des Activités</div>
@@ -209,6 +198,7 @@ $pastel_colors = ['#fca5a5', '#fdba74', '#fde047', '#86efac', '#5eead4', '#67e8f
                 <div class="tab-content" id="taskAdminTabsContent">
                     
                     <div class="tab-pane fade show active" id="classic" role="tabpanel">
+                        
                         <form method="POST">
                             <input type="hidden" name="add_task" value="1">
                             <div class="row">
@@ -303,9 +293,49 @@ $pastel_colors = ['#fca5a5', '#fdba74', '#fde047', '#86efac', '#5eead4', '#67e8f
     </div>
 </div>
 
-<!-- ========================================== -->
-<!-- ZONES DES MODALES UTILISATEURS             -->
-<!-- ========================================== -->
+<?php if ($_SESSION['role'] === 'admin'): ?>
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card border-dark shadow-sm mb-4">
+            <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                <div><i class="bi bi-clock-history"></i> Historique des Actions (Audit)</div>
+                <span class="badge bg-light text-dark">Dernières 500 actions</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                    <table class="table table-hover table-sm align-middle mb-0 small">
+                        <thead class="table-light" style="position: sticky; top: 0; z-index: 10;">
+                            <tr>
+                                <th style="width: 150px; padding-left: 15px;">Date</th>
+                                <th style="width: 150px;">Utilisateur</th>
+                                <th style="width: 150px;">Type d'action</th>
+                                <th>Détails</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php 
+                            $auditLogs = getDb(FILE_AUDIT);
+                            if(empty($auditLogs)): ?>
+                                <tr><td colspan="4" class="text-center text-muted py-4">Aucune action enregistrée pour le moment.</td></tr>
+                            <?php else: ?>
+                                <?php foreach($auditLogs as $log): ?>
+                                    <tr>
+                                        <td class="text-muted ps-3"><?= htmlspecialchars(date('d/m/Y H:i:s', strtotime($log['date']))) ?></td>
+                                        <td class="fw-bold"><?= htmlspecialchars($log['user']) ?></td>
+                                        <td><span class="badge bg-secondary"><?= htmlspecialchars($log['action']) ?></span></td>
+                                        <td class="text-truncate" style="max-width: 400px;" title="<?= htmlspecialchars($log['details']) ?>"><?= htmlspecialchars($log['details']) ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
 <?php 
 if ($_SESSION['role'] === 'admin'): 
     foreach(getDb(FILE_USERS) as $id => $u): 
@@ -374,9 +404,6 @@ if ($_SESSION['role'] === 'admin'):
 endif; 
 ?>
 
-<!-- ========================================== -->
-<!-- ZONES DES MODALES TACHES (CATALOGUE)       -->
-<!-- ========================================== -->
 <?php 
 if ($_SESSION['role'] === 'admin' || hasPermission('can_manage_tasks')): 
     foreach(getDb(FILE_TASKS) as $id => $t): 
@@ -447,7 +474,6 @@ if ($_SESSION['role'] === 'admin' || hasPermission('can_manage_tasks')):
 endif; 
 ?>
 
-<!-- MODALE ERREUR JSON GLOBALE -->
 <?php if((isset($_GET['json_error']) || isset($_GET['json_user_error'])) && !empty($_SESSION['json_error_msg'])): ?>
 <div class="modal fade" id="jsonErrorModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
