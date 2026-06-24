@@ -5,6 +5,8 @@ $allUsers = getDb(FILE_USERS);
 
 $canSaisie = hasPermission('can_saisie');
 $canDashboard = hasPermission('can_dashboard');
+// VÉRIFICATION DE LA NOUVELLE PERMISSION
+$canSaisieOthers = hasPermission('can_saisie_others') || $_SESSION['role'] === 'admin';
 
 // --------------------------------------------------------
 // MOTEUR DE NAVIGATION TEMPORELLE (Fenêtre de 6 mois)
@@ -151,6 +153,18 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
     }
     return 'background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: #ffffff; font-weight: bold; border: 1px solid #991b1b; box-shadow: inset 0 2px 4px rgba(255,255,255,0.2), 0 2px 5px rgba(239, 68, 68, 0.3); text-shadow: 0 1px 2px rgba(0,0,0,0.2);'; 
 }
+
+// Fonction de style unifiée pour le détail Consultant (Vert pastel)
+function getDetailHeatmapStyle($valeur) {
+    if ($valeur == 0) return 'background-color: #ffffff;';
+    return 'background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); color: #065f46; border: 1px solid #6ee7b7; box-shadow: inset 0 2px 4px rgba(255,255,255,0.5); font-weight: bold; transition: all 0.2s;'; 
+}
+
+// Fonction de style unifiée pour les Projets (Indigo pastel élégant)
+function getProjectHeatmapStyle($valeur) {
+    if ($valeur == 0) return 'background-color: #ffffff;';
+    return 'background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%); color: #3730a3; border: 1px solid #a5b4fc; box-shadow: inset 0 2px 4px rgba(255,255,255,0.5); font-weight: bold; transition: all 0.2s;';
+}
 ?>
 
 <div class="d-flex justify-content-between align-items-center mb-3 bg-white p-2 rounded shadow-sm border">
@@ -186,6 +200,8 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
 
 <div class="tab-content bg-white border border-top-0 p-3 rounded-bottom shadow-sm" id="viewTabsContent">
 
+    <!-- ========================================================================================= -->
+    <!-- VUE 1 : CONSULTANT / MOIS -->
     <div class="tab-pane fade show active" id="vue1" role="tabpanel">
         <div class="table-responsive">
             <table class="table table-bordered table-hover text-center align-middle mb-0">
@@ -280,6 +296,8 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
         <div class="mt-2 small text-muted"><i class="bi bi-info-circle"></i> Cliquez sur une cellule pour consulter le détail des affectations de ce mois.</div>
     </div>
 
+    <!-- ========================================================================================= -->
+    <!-- VUE DÉTAIL CONSULTANT -->
     <div class="tab-pane fade" id="vue-detail" role="tabpanel">
         
         <?php if ($_SESSION['role'] === 'admin' || $canDashboard): ?>
@@ -335,15 +353,16 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
                             </td>
                             <?php foreach($dash_months as $m_key => $m_data): 
                                 $valeur = $detail_grid[$tid][$m_key] ?? 0;
-                                $isClickable = ($_SESSION['role'] === 'admin' || $canSaisie) ? "cursor: pointer;" : "";
+                                $isClickable = ($_SESSION['role'] === 'admin' || $canSaisieOthers || ($canSaisie && $detail_uid === $_SESSION['user_id']));
+                                $style = getDetailHeatmapStyle($valeur);
                             ?>
-                                <td class="text-center" style="<?= $valeur > 0 ? 'background-color: #f0fdf4;' : '' ?> <?= $isClickable ?>" 
+                                <td class="text-center align-middle" style="<?= $style ?> <?= $isClickable ? "cursor: pointer;" : "" ?>" 
                                     <?php if($isClickable): ?>
                                     onclick="openFastModal('<?= $detail_uid ?>', '<?= addslashes(htmlspecialchars($detail_uname)) ?>', '<?= $m_key ?>', '<?= $tid ?>')"
                                     <?php endif; ?>>
                                     
                                     <?php if($valeur > 0): ?>
-                                        <span class="badge bg-success px-2 py-1 fs-6"><?= $valeur ?></span>
+                                        <div class="fs-6"><?= $valeur ?></div>
                                     <?php else: ?>
                                         <span class="text-muted" style="opacity: 0.15;">—</span>
                                     <?php endif; ?>
@@ -375,6 +394,8 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
         </div>
     </div>
 
+    <!-- ========================================================================================= -->
+    <!-- VUE 2 : PROJET / MOIS -->
     <div class="tab-pane fade" id="vue2" role="tabpanel">
         <div class="table-responsive">
             <table class="table table-bordered table-hover align-middle mb-0">
@@ -407,14 +428,15 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
                         </td>
                         <?php foreach($dash_months as $m_key => $m_data): 
                             $valeur = $pivot_task_month[$tid][$m_key] ?? 0;
+                            $style = getProjectHeatmapStyle($valeur);
                         ?>
-                            <td class="text-center" style="<?= $valeur > 0 ? 'background-color: #f8fafc;' : '' ?>"
-                                <?php if($_SESSION['role'] === 'admin'): ?>
-                                    onclick="openFastModal('', '', '<?= $m_key ?>', '<?= $tid ?>')" style="cursor:pointer;" title="Affecter quelqu'un sur ce projet"
+                            <td class="text-center align-middle" style="<?= $style ?> <?= $canSaisieOthers ? "cursor: pointer;" : "" ?>"
+                                <?php if($canSaisieOthers): ?>
+                                    onclick="openFastModal('', '', '<?= $m_key ?>', '<?= $tid ?>')" title="Affecter quelqu'un sur ce projet"
                                 <?php endif; ?>>
                                 
                                 <?php if($valeur > 0): ?>
-                                    <span class="badge bg-primary px-2 py-1 fs-6"><?= $valeur ?></span>
+                                    <div class="fs-6"><?= $valeur ?></div>
                                 <?php else: ?>
                                     <span class="text-muted" style="opacity: 0.2;">—</span>
                                 <?php endif; ?>
@@ -445,6 +467,8 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
         </div>
     </div>
 
+    <!-- ========================================================================================= -->
+    <!-- VUE 3 : PROJET / CONSULTANT -->
     <div class="tab-pane fade" id="vue3" role="tabpanel">
         <div class="alert alert-light border small py-2 mb-3">
             <i class="bi bi-info-square"></i> Cette vue agrège l'effort total de chaque consultant sur la période affichée (les 6 mois).
@@ -477,9 +501,14 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
                         </td>
                         <?php foreach($displayUsers as $uid => $uname): 
                             $valeur = $pivot_task_user[$tid][$uid] ?? 0;
+                            $style = getProjectHeatmapStyle($valeur);
                         ?>
-                            <td style="<?= $valeur > 0 ? 'background-color: #f0fdf4; color: #166534; font-weight: bold;' : '' ?>">
-                                <?= $valeur > 0 ? $valeur : '<span class="text-muted" style="opacity: 0.2;">—</span>' ?>
+                            <td class="text-center align-middle" style="<?= $style ?>">
+                                <?php if($valeur > 0): ?>
+                                    <div class="fs-6"><?= $valeur ?></div>
+                                <?php else: ?>
+                                    <span class="text-muted" style="opacity: 0.2;">—</span>
+                                <?php endif; ?>
                             </td>
                         <?php endforeach; ?>
                     </tr>
@@ -507,6 +536,8 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
         </div>
     </div>
 
+    <!-- ========================================================================================= -->
+    <!-- VUE 4 : SAISIE MANUELLE LIBRE -->
     <?php if($canSaisie): ?>
     <div class="tab-pane fade mt-3" id="saisie" role="tabpanel">
         <div class="row justify-content-center">
@@ -516,7 +547,7 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
                     <div class="card-body">
                         <form method="POST">
                             
-                            <?php if ($_SESSION['role'] === 'admin'): ?>
+                            <?php if ($canSaisieOthers): ?>
                             <div class="mb-3">
                                 <label class="form-label small fw-bold text-primary"><i class="bi bi-person-fill"></i> Consultant ciblé</label>
                                 <select name="target_user_id" class="form-select border-primary" required>
@@ -573,6 +604,7 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
 
 </div>
 
+<!-- MODALE D'AFFECTATION -->
 <div class="modal fade" id="fastAddModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered modal-sm">
     <div class="modal-content border-0 shadow-lg">
@@ -587,7 +619,7 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
             <div class="text-center mb-3">
                 <div id="modal_uname_display" class="fw-bold text-dark fs-6 mb-1"></div>
                 
-                <?php if ($_SESSION['role'] === 'admin'): ?>
+                <?php if ($canSaisieOthers): ?>
                 <select name="target_user_id" id="modal_uid_select" class="form-select form-select-sm border-primary fw-bold mb-2 d-none" required>
                     <?php foreach($displayUsers as $uid => $uname): ?>
                         <option value="<?= $uid ?>"><?= htmlspecialchars($uname) ?></option>
@@ -618,8 +650,10 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
                     <span>Volume (0 pour effacer) :</span>
                 </label>
                 
+                <!-- Le Slider -->
                 <input type="range" class="form-range mb-2" id="valeur_slider" min="0" max="10" step="0.1" value="1" oninput="syncValeur(this.value, 'slider')">
                 
+                <!-- Le Champ Texte synchronisé -->
                 <div class="input-group input-group-sm">
                     <input type="text" inputmode="decimal" pattern="^[0-9]*([.,][0-9]+)?$" name="valeur" id="valeur_input" class="form-control text-center fw-bold" value="1" placeholder="ex: 0.5" required oninput="syncValeur(this.value, 'input')">
                 </div>
@@ -639,6 +673,7 @@ function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
   </div>
 </div>
 
+<!-- MODALE DÉTAIL D'AFFECTATION -->
 <div class="modal fade" id="detailModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
@@ -683,7 +718,6 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 });
 
-// Fonction pour synchroniser le slider et le champ texte
 function syncValeur(val, source) {
     let v = val.toString().replace(',', '.');
     if (source === 'slider') {
@@ -705,7 +739,6 @@ function updateModalColor() {
         if(color) {
             header.style.backgroundColor = color;
             
-            // Calcul basique pour savoir si la couleur de fond est claire ou foncée (pour la lisibilité)
             const hex = color.replace('#', '');
             const r = parseInt(hex.substr(0, 2), 16);
             const g = parseInt(hex.substr(2, 2), 16);
@@ -751,7 +784,6 @@ function openFastModal(uid, uname, monthKey, taskId = '') {
         taskSelect.value = '';
     }
     
-    // Reset valeurs à 1 par défaut
     document.getElementById('valeur_slider').value = 1;
     document.getElementById('valeur_input').value = 1;
     
