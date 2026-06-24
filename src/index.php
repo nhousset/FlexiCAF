@@ -46,14 +46,17 @@ if ($action === 'home' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST[
 
     $task_id = $_POST['task_id'];
     
-    // Remplacement de la virgule par un point pour la compatibilité PHP
+    // Remplacement de la virgule par un point
     $valeur = floatval(str_replace(',', '.', trim($_POST['valeur'])));
     
     $month_saisie = $_POST['month_saisie']; 
     $edit_mode = $_POST['edit_mode'] ?? 'add'; 
     
     $date_to_save = $month_saisie . '-01'; 
-    $target_user_id = (!empty($_POST['target_user_id']) && $_SESSION['role'] === 'admin') ? $_POST['target_user_id'] : $_SESSION['user_id'];
+    
+    // VÉRIFICATION DE LA NOUVELLE PERMISSION
+    $canSaisieOthers = hasPermission('can_saisie_others') || $_SESSION['role'] === 'admin';
+    $target_user_id = (!empty($_POST['target_user_id']) && $canSaisieOthers) ? $_POST['target_user_id'] : $_SESSION['user_id'];
 
     $data = getDb(FILE_DATA);
 
@@ -143,6 +146,7 @@ if ($action === 'admin' && ($_SESSION['role'] === 'admin' || hasPermission('can_
                     'name' => $_POST['u_name'], 'email' => $_POST['u_email'],
                     'password' => password_hash($_POST['u_pass'], PASSWORD_DEFAULT),
                     'can_saisie' => isset($_POST['u_can_saisie']),
+                    'can_saisie_others' => isset($_POST['u_can_saisie_others']), // NOUVELLE OPTION
                     'can_dashboard' => isset($_POST['u_can_dashboard']),
                     'can_manage_tasks' => isset($_POST['u_can_manage_tasks']),
                     'is_excluded' => isset($_POST['u_is_excluded'])
@@ -158,6 +162,7 @@ if ($action === 'admin' && ($_SESSION['role'] === 'admin' || hasPermission('can_
                     $users[$uid]['email'] = $_POST['u_email'];
                     if (!empty($_POST['u_pass'])) $users[$uid]['password'] = password_hash($_POST['u_pass'], PASSWORD_DEFAULT);
                     $users[$uid]['can_saisie'] = isset($_POST['u_can_saisie']);
+                    $users[$uid]['can_saisie_others'] = isset($_POST['u_can_saisie_others']); // NOUVELLE OPTION
                     $users[$uid]['can_dashboard'] = isset($_POST['u_can_dashboard']);
                     $users[$uid]['can_manage_tasks'] = isset($_POST['u_can_manage_tasks']);
                     $users[$uid]['is_excluded'] = isset($_POST['u_is_excluded']);
