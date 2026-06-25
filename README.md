@@ -4,7 +4,7 @@ FlexiCAF est une application web légère et performante dédiée au **pilotage 
 
 Conçue pour offrir une visibilité instantanée sur l'allocation des ressources, elle se base sur une architecture "Flat File" (fichiers JSON) qui la rend extrêmement facile à déployer, à sauvegarder et à migrer, sans nécessiter de base de données SQL.
 
-## 🚀 Fonctionnalités Principales
+## Fonctionnalités Principales
 
 * **Vues Croisées Dynamiques** : Analysez la charge (en Jours-Hommes) sous tous les angles via des tableaux de bord interactifs :
   * *Consultant / Mois* (Vue globale de l'équipe)
@@ -23,7 +23,7 @@ Conçue pour offrir une visibilité instantanée sur l'allocation des ressources
 
 ---
 
-## 🏗️ Architecture et Fonctionnement
+## Architecture et Fonctionnement
 
 Le projet est divisé en deux parties principales :
 * `src/` : Contient le code source de l'application (PHP 8, HTML5, CSS, JS, Bootstrap 5).
@@ -33,7 +33,7 @@ Cette séparation permet d'utiliser **Docker** de manière optimale : le code es
 
 ---
 
-## 🐳 Déploiement avec Docker (Local / Standalone)
+## Déploiement avec Docker (Local / Standalone)
 
 L'application est conteneurisée à l'aide de l'image officielle PHP-Apache. 
 
