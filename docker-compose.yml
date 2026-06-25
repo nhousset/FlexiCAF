@@ -1,12 +1,15 @@
 version: '3.8'
 
 services:
-  web:
-    build: .                 
-    container_name: flexiCAF
+  flexicaf:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: flexicaf_app
+    restart: unless-stopped
     ports:
-      - "7000:80"
+      - "8080:80" # Tu pourras accéder à l'app sur http://localhost:8080
     volumes:
-      # Code source de l'application
-      - /home/rocky/flexiCAF/src:/var/www/html
+      # On map le dossier local db vers le dossier db du conteneur
+      - ./src/db:/var/www/html/db
     restart: unless-stopped
