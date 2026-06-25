@@ -46,22 +46,27 @@ Placez-vous à la racine du projet (au même niveau que le `Dockerfile` et le do
 
 ```bash
 docker build -t flexicaf-app .
-3. Démarrer le conteneur
+```
+
+### 3. Démarrer le conteneur
 Une fois l'image compilée, lancez le conteneur en mappant le dossier de base de données local vers le conteneur :
 
-Bash
+```bash
 docker run -d \
   --name flexicaf \
   --restart unless-stopped \
   -p 8080:80 \
   -v "$(pwd)/src/db:/var/www/html/db" \
   flexicaf-app
+```
 Note sur les droits Linux : Si l'application affiche une erreur d'écriture JSON lors de la première utilisation, assurez-vous que l'utilisateur du conteneur (www-data, UID 33) a le droit d'écrire dans le dossier monté :
 
-Bash
+```bash
 sudo chown -R 33:33 ./src/db
 sudo chmod -R 775 ./src/db
-⚙️ Premier lancement
+```
+
+## Premier lancement
 Accédez à l'application via votre navigateur : http://localhost:8080 (ou l'IP de votre serveur).
 
 L'application détectera qu'il s'agit du premier lancement (absence du fichier admin.json) et vous redirigera vers la page d'initialisation.
@@ -72,7 +77,7 @@ Connectez-vous avec l'identifiant admin et le mot de passe fraîchement créé.
 
 Rendez-vous dans la Console d'Administration pour personnaliser le nom de votre équipe, créer vos collaborateurs et définir vos projets !
 
-💾 Sauvegarde et Restauration
+##  Sauvegarde et Restauration
 Puisque toute la donnée réside dans le dossier /src/db/, une simple copie de ce dossier suffit pour sauvegarder l'intégralité de l'outil.
 Vous pouvez également, depuis la vue Administration, cliquer sur le bouton Archive ZIP pour télécharger instantanément un backup à jour de vos fichiers JSON.
 
