@@ -44,14 +44,14 @@ L'application est conteneurisée à l'aide de l'image officielle PHP-Apache.
 ### 2. Compiler l'image locale
 Placez-vous à la racine du projet (au même niveau que le `Dockerfile` et le dossier `src/`) et lancez la commande de compilation :
 
-```bash
+```
 docker build -t flexicaf-app .
 ```
 
 ### 3. Démarrer le conteneur
 Une fois l'image compilée, lancez le conteneur en mappant le dossier de base de données local vers le conteneur :
 
-```bash
+```
 docker run -d \
   --name flexicaf \
   --restart unless-stopped \
@@ -61,7 +61,7 @@ docker run -d \
 ```
 Note sur les droits Linux : Si l'application affiche une erreur d'écriture JSON lors de la première utilisation, assurez-vous que l'utilisateur du conteneur (www-data, UID 33) a le droit d'écrire dans le dossier monté :
 
-```bash
+```
 sudo chown -R 33:33 ./src/db
 sudo chmod -R 775 ./src/db
 ```
