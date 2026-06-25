@@ -236,13 +236,6 @@ foreach($chart_type_month as $type => $monthsData) {
     background-color: #f8fafc !important; 
     box-shadow: inset 0 -2px 0 #e2e8f0, 0 4px 6px -2px rgba(0,0,0,0.05); 
 }
-
-/* =======================================================
-   ÉVOLUTION : Animation Fade plus smooth pour les onglets
-   ======================================================= */
-.tab-pane.fade {
-    transition: opacity 0.4s ease-in-out;
-}
 </style>
 
 <div class="d-flex justify-content-between align-items-center mb-3 bg-white p-2 rounded shadow-sm border">
@@ -281,7 +274,9 @@ foreach($chart_type_month as $type => $monthsData) {
 
 <div class="tab-content bg-white border border-top-0 p-3 rounded-bottom shadow-sm" id="viewTabsContent">
 
-    <div class="tab-pane fade show active" id="vue1" role="tabpanel">
+    <!-- ========================================================================================= -->
+    <!-- VUE 1 : CONSULTANT / MOIS -->
+    <div class="tab-pane active" id="vue1" role="tabpanel">
         <div class="table-responsive">
             <table class="table table-bordered table-hover text-center align-middle mb-0">
                 <thead class="table-light">
@@ -375,7 +370,9 @@ foreach($chart_type_month as $type => $monthsData) {
         <div class="mt-2 small text-muted"><i class="bi bi-info-circle"></i> Cliquez sur une cellule pour consulter le détail des affectations de ce mois.</div>
     </div>
 
-    <div class="tab-pane fade" id="vue-detail" role="tabpanel">
+    <!-- ========================================================================================= -->
+    <!-- VUE DÉTAIL CONSULTANT -->
+    <div class="tab-pane" id="vue-detail" role="tabpanel">
         
         <?php if ($_SESSION['role'] === 'admin' || $canDashboard): ?>
         <form method="GET" class="mb-4 d-flex align-items-center bg-light p-2 rounded border">
@@ -471,7 +468,9 @@ foreach($chart_type_month as $type => $monthsData) {
         </div>
     </div>
 
-    <div class="tab-pane fade" id="vue2" role="tabpanel">
+    <!-- ========================================================================================= -->
+    <!-- VUE 2 : PROJET / MOIS -->
+    <div class="tab-pane" id="vue2" role="tabpanel">
         <div class="table-responsive">
             <table class="table table-bordered table-hover align-middle mb-0">
                 <thead class="table-light text-center">
@@ -542,7 +541,9 @@ foreach($chart_type_month as $type => $monthsData) {
         </div>
     </div>
 
-    <div class="tab-pane fade" id="vue3" role="tabpanel">
+    <!-- ========================================================================================= -->
+    <!-- VUE 3 : PROJET / CONSULTANT -->
+    <div class="tab-pane" id="vue3" role="tabpanel">
         <div class="alert alert-light border small py-2 mb-3">
             <i class="bi bi-info-square"></i> Cette vue agrège l'effort total de chaque consultant sur la période affichée (les 6 mois).
         </div>
@@ -609,7 +610,9 @@ foreach($chart_type_month as $type => $monthsData) {
         </div>
     </div>
 
-    <div class="tab-pane fade" id="vue-graph" role="tabpanel">
+    <!-- ========================================================================================= -->
+    <!-- NOUVELLE VUE : GRAPHIQUE (CHART.JS) -->
+    <div class="tab-pane" id="vue-graph" role="tabpanel">
         <div class="alert alert-light border small py-2 mb-3 shadow-sm">
             <i class="bi bi-info-square text-primary"></i> <strong>Aperçu analytique :</strong> Répartition de la charge globale de l'équipe par type d'activité superposée à la capacité théorique.
         </div>
@@ -618,8 +621,10 @@ foreach($chart_type_month as $type => $monthsData) {
         </div>
     </div>
 
+    <!-- ========================================================================================= -->
+    <!-- VUE 4 : SAISIE MANUELLE LIBRE -->
     <?php if($canSaisie): ?>
-    <div class="tab-pane fade mt-3" id="saisie" role="tabpanel">
+    <div class="tab-pane mt-3" id="saisie" role="tabpanel">
         <div class="row justify-content-center">
             <div class="col-md-5">
                 <div class="card shadow-sm border-success">
@@ -684,6 +689,7 @@ foreach($chart_type_month as $type => $monthsData) {
 
 </div>
 
+<!-- MODALE D'AFFECTATION -->
 <div class="modal fade" id="fastAddModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered modal-sm">
     <div class="modal-content border-0 shadow-lg">
@@ -729,8 +735,10 @@ foreach($chart_type_month as $type => $monthsData) {
                     <span>Volume (0 pour effacer) :</span>
                 </label>
                 
+                <!-- Le Slider -->
                 <input type="range" class="form-range mb-2" id="valeur_slider" min="0" max="10" step="0.1" value="1" oninput="syncValeur(this.value, 'slider')">
                 
+                <!-- Le Champ Texte synchronisé -->
                 <div class="input-group input-group-sm">
                     <input type="text" inputmode="decimal" pattern="^[0-9]*([.,][0-9]+)?$" name="valeur" id="valeur_input" class="form-control text-center fw-bold" value="1" placeholder="ex: 0.5" required oninput="syncValeur(this.value, 'input')">
                 </div>
@@ -750,6 +758,7 @@ foreach($chart_type_month as $type => $monthsData) {
   </div>
 </div>
 
+<!-- MODALE DÉTAIL D'AFFECTATION -->
 <div class="modal fade" id="detailModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
@@ -780,6 +789,7 @@ foreach($chart_type_month as $type => $monthsData) {
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<!-- CDN Chart.js pour le graphique analytique -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
