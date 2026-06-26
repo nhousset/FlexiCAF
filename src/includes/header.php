@@ -73,11 +73,13 @@ $dataDate = (defined('FILE_DATA') && file_exists(FILE_DATA)) ? date('d/m/Y à H:
                         <span class="d-block small text-muted"><?= $_SESSION['role'] === 'admin' ? 'Administrateur Système' : 'Consultant' ?></span>
                     </li>
                     
+                    <?php if ($_SESSION['role'] !== 'admin'): ?>
                     <li>
                         <a class="dropdown-item" href="?action=home">
                             <i class="bi bi-calendar3 text-primary me-2"></i> Mon Planning
                         </a>
                     </li>
+                    <?php endif; ?>
                     
                     <?php if ($_SESSION['role'] === 'admin' || hasPermission('can_manage_tasks')): ?>
                     <li>
