@@ -209,6 +209,17 @@ function getProjectHeatmapStyle($valeur) {
 #viewTabsContent .table-responsive thead th { position: sticky; top: 0; z-index: 100; background-color: #f8fafc !important; box-shadow: inset 0 -2px 0 #e2e8f0, 0 4px 6px -2px rgba(0,0,0,0.05); }
 </style>
 
+<div class="d-flex justify-content-between align-items-center mb-3 bg-white p-2 rounded shadow-sm border">
+    <div>
+        <a href="?action=home&date=<?= $nav_prev ?><?= isset($_GET['detail_uid']) ? '&detail_uid='.$_GET['detail_uid'] : '' ?>" class="btn btn-sm btn-light border"><i class="bi bi-chevron-double-left"></i> 6 Mois Précédents</a>
+        <a href="?action=home&date=<?= date('Y-m-01') ?><?= isset($_GET['detail_uid']) ? '&detail_uid='.$_GET['detail_uid'] : '' ?>" class="btn btn-sm btn-light border mx-1">Mois en cours</a>
+        <a href="?action=home&date=<?= $nav_next ?><?= isset($_GET['detail_uid']) ? '&detail_uid='.$_GET['detail_uid'] : '' ?>" class="btn btn-sm btn-light border">6 Mois Suivants <i class="bi bi-chevron-double-right"></i></a>
+    </div>
+    <div class="text-muted small fw-bold">
+        Pilotage Mensuel de la Capacité
+    </div>
+</div>
+
 <ul class="nav nav-tabs" id="viewTabs" role="tablist">
   <?php if ($isManager): ?>
       <li class="nav-item" role="presentation"><button class="nav-link active" id="vue1-tab" data-bs-toggle="tab" data-bs-target="#vue1" type="button"><i class="bi bi-person-lines-fill"></i> Consultant / Mois</button></li>
@@ -224,6 +235,8 @@ function getProjectHeatmapStyle($valeur) {
 <div class="tab-content bg-white border border-top-0 p-3 rounded-bottom shadow-sm" id="viewTabsContent">
 
     <?php if ($isManager): ?>
+    <!-- ========================================================================================= -->
+    <!-- VUE 1 : CONSULTANT / MOIS -->
     <div class="tab-pane active" id="vue1" role="tabpanel">
         <div class="d-flex justify-content-end mb-3 gap-2">
             <button class="btn btn-sm btn-outline-secondary" id="btnToggleKpi" onclick="toggleDashboardSection('kpi_container', 'cookie_kpi')"><i class="bi bi-eye-slash"></i> Masquer KPIs</button>
@@ -292,6 +305,8 @@ function getProjectHeatmapStyle($valeur) {
     </div>
     <?php endif; ?>
 
+    <!-- ========================================================================================= -->
+    <!-- VUE DÉTAIL CONSULTANT -->
     <div class="tab-pane <?= !$isManager ? 'active' : '' ?>" id="vue-detail" role="tabpanel">
         <?php if ($isManager): ?>
         <form method="GET" class="mb-4 d-flex align-items-center bg-light p-2 rounded border">
@@ -345,6 +360,8 @@ function getProjectHeatmapStyle($valeur) {
         </div>
     </div>
 
+    <!-- ========================================================================================= -->
+    <!-- VUE 2 : PROJET / MOIS -->
     <div class="tab-pane" id="vue2" role="tabpanel">
         <div class="table-responsive">
             <table class="table table-bordered table-hover align-middle mb-0">
@@ -377,6 +394,8 @@ function getProjectHeatmapStyle($valeur) {
     </div>
 
     <?php if ($isManager): ?>
+    <!-- ========================================================================================= -->
+    <!-- VUE 3 : PROJET / CONSULTANT -->
     <div class="tab-pane" id="vue3" role="tabpanel">
         <div class="table-responsive">
             <table class="table table-bordered table-hover align-middle mb-0 text-center">
@@ -411,8 +430,10 @@ function getProjectHeatmapStyle($valeur) {
 
 </div>
 
+<!-- MODALE AFFECTATION RAPIDE -->
 <div class="modal fade" id="fastAddModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-sm"><div class="modal-content border-0 shadow-lg"><div class="modal-header py-2 border-0 transition-color" id="fastAddModalHeader" style="background-color: #212529; color: #fff;"><h6 class="modal-title mb-0 fw-bold" id="fastAddModalTitle"><i class="bi bi-journal-check me-1"></i> Affectation</h6><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" id="fastAddModalCloseBtn"></button></div><div class="modal-body bg-light"><form method="POST" action="?action=home<?= isset($_GET['date']) ? '&date='.$_GET['date'] : '' ?><?= isset($_GET['detail_uid']) ? '&detail_uid='.$_GET['detail_uid'] : '' ?>"><input type="hidden" name="month_saisie" id="modal_month" value=""><div class="text-center mb-3"><div id="modal_uname_display" class="fw-bold text-dark fs-6 mb-1"></div><?php if ($canSaisieOthers): ?><select name="target_user_id" id="modal_uid_select" class="form-select form-select-sm border-primary fw-bold mb-2 d-none" required><?php foreach($displayUsers as $uid => $uname): ?><option value="<?= $uid ?>"><?= htmlspecialchars($uname) ?></option><?php endforeach; ?></select><?php else: ?><input type="hidden" name="target_user_id" id="modal_uid_hidden" value=""><?php endif; ?><div class="badge bg-secondary shadow-sm" id="modal_month_display"></div></div><div class="mb-3"><label class="form-label small fw-bold text-muted">Sur le projet :</label><select name="task_id" id="modal_task_id" class="form-select form-select-sm" required onchange="updateModalColor()"><option value="" disabled selected data-color="#212529">Sélectionner...</option><?php foreach($tasks as $id => $t): $type = htmlspecialchars($t['type'] ?? 'Technique'); $color = htmlspecialchars($t['color'] ?? '#212529'); ?><option value="<?= $id ?>" data-color="<?= $color ?>">[<?= mb_strtoupper($type, 'UTF-8') ?>] <?= htmlspecialchars($t['title']) ?></option><?php endforeach; ?></select></div><div class="mb-3"><label class="form-label small fw-bold text-muted d-flex justify-content-between"><span>Volume :</span></label><input type="range" class="form-range mb-2" id="valeur_slider" min="0" max="10" step="0.1" value="1" oninput="syncValeur(this.value, 'slider')"><div class="input-group input-group-sm"><input type="text" inputmode="decimal" pattern="^[0-9]*([.,][0-9]+)?$" name="valeur" id="valeur_input" class="form-control text-center fw-bold" value="1" required oninput="syncValeur(this.value, 'input')"></div></div><div class="mb-4"><select name="edit_mode" class="form-select form-select-sm bg-white"><option value="replace" selected>Remplacer l'existant (=)</option><option value="add">Ajouter à l'existant (+)</option></select></div><button type="submit" class="btn btn-dark btn-sm w-100 fw-bold py-2 shadow-sm">Valider</button></form></div></div></div></div>
 
+<!-- MODALE DETAIL D'AFFECTATION -->
 <div class="modal fade" id="detailModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header bg-info text-white py-2"><h6 class="modal-title mb-0"><i class="bi bi-list-task"></i> Détail des affectations du mois</h6><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body bg-light"><div class="text-center mb-3"><div class="fw-bold text-dark fs-5" id="detail_modal_uname"></div><div class="badge bg-secondary fs-6" id="detail_modal_month_display"></div></div><div class="table-responsive"><table class="table table-sm table-bordered align-middle bg-white shadow-sm"><thead class="table-light text-center small"><tr><th class="text-start">Projet / Activité</th><th style="width: 100px;">Charge</th></tr></thead><tbody id="detail_modal_body"></tbody><tfoot class="table-light text-center fw-bold"><tr><td class="text-end">TOTAL DU MOIS</td><td id="detail_modal_total" class="text-primary"></td></tr></tfoot></table></div></div></div></div></div>
 
 <script>
