@@ -108,7 +108,6 @@ if ($action === 'admin' && ($_SESSION['role'] === 'admin' || hasPermission('can_
         $zip_path = sys_get_temp_dir() . '/' . $zipname;
 
         if ($zip->open($zip_path, ZipArchive::CREATE | ZipArchive::OVERWRITE) === TRUE) {
-            // AJOUT DU FICHIER D'AUDIT AU ZIP
             $files_to_zip = ['users.json', 'tasks.json', 'data.json', 'admin.json', 'settings.json', 'audit.json'];
             
             foreach ($files_to_zip as $file) {
@@ -140,8 +139,10 @@ if ($action === 'admin' && ($_SESSION['role'] === 'admin' || hasPermission('can_
                 $settings = getDb(FILE_SETTINGS);
                 $settings['app_name'] = trim($_POST['app_name']);
                 if (empty($settings['app_name'])) $settings['app_name'] = 'FlexiCAF';
+                // EVOLUTION: Enregistrement de l'option d'activation du Reste à planifier
+                $settings['show_backlog'] = isset($_POST['show_backlog']); 
                 saveDb(FILE_SETTINGS, $settings);
-                logAudit("Configuration", "Modification du nom de l'application : " . $settings['app_name']);
+                logAudit("Configuration", "Modification des paramètres globaux de l'application");
                 header('Location: ?action=admin&settings_success=1'); exit;
             }
 
