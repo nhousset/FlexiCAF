@@ -1,4 +1,16 @@
 <?php
+// --------------------------------------------------------
+// DÉCLARATION DES PALETTES DE COULEURS
+// --------------------------------------------------------
+$typeColors = [
+    'Technique' => '#fef08a',   
+    'Fonctionnel' => '#bbf7d0', 
+    'Structure' => '#bae6fd',   
+    'Absences' => '#fca5a5',    
+    'Formation' => '#e9d5ff'    
+];
+$userColors = ['#fca5a5', '#fdba74', '#fde047', '#86efac', '#5eead4', '#67e8f9', '#93c5fd', '#a5b4fc', '#d8b4fe', '#f9a8d4'];
+
 $chartDatasetsType = [];
 $chartDatasetsUser = [];
 
@@ -13,9 +25,9 @@ $capDataset = [
     'data' => $capData,
     'borderColor' => '#ef4444', 
     'backgroundColor' => '#ef4444',
-    'borderWidth' => 3, // Plus épais
+    'borderWidth' => 3,
     'fill' => false,
-    'tension' => 0.4, // Courbe adoucie
+    'tension' => 0.4,
     'pointRadius' => 5,
     'pointBackgroundColor' => '#ffffff',
     'pointBorderColor' => '#ef4444',
@@ -37,7 +49,7 @@ foreach($chart_type_month as $type => $monthsData) {
             'backgroundColor' => $typeColors[$type] ?? '#cbd5e1', 
             'borderColor' => 'rgba(0,0,0,0.05)',
             'borderWidth' => 1,
-            'borderRadius' => 6, // Barres arrondies (plus moderne)
+            'borderRadius' => 6,
             'order' => 1
         ];
     }
@@ -51,6 +63,7 @@ foreach($displayUsers as $uid => $uname) {
             'type' => 'bar',
             'label' => $uname,
             'data' => array_values($pivot_user_month[$uid]),
+            // Utilisation sécurisée de $userColors
             'backgroundColor' => $userColors[$cIndex % count($userColors)], 
             'borderColor' => 'rgba(0,0,0,0.05)',
             'borderWidth' => 1,
@@ -103,7 +116,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 scales: {
                     x: { 
                         stacked: true,
-                        grid: { display: false } // Retire les lignes verticales pour épurer
+                        grid: { display: false }
                     },
                     y: { 
                         stacked: true, 
@@ -111,7 +124,7 @@ document.addEventListener("DOMContentLoaded", function() {
                         title: { display: false },
                         grid: {
                             color: 'rgba(0, 0, 0, 0.05)',
-                            borderDash: [5, 5] // Lignes horizontales en pointillés
+                            borderDash: [5, 5]
                         },
                         border: { display: false }
                     }
