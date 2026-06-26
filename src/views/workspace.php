@@ -124,7 +124,7 @@ foreach($allData as $e) {
             }
             $breakdown_user_month_task[$uid][$m_key][$tid] += $e['valeur_j'];
             
-            // AGREGATION POUR LE GRAPHIQUE GLOBAL
+            // AGREGATION POUR LE GRAPHIQUE GLOBAL ET KPI
             $t_type = $tasks[$tid]['type'] ?? 'Autre';
             if(!isset($chart_type_month[$t_type])) {
                 $chart_type_month[$t_type] = array_fill_keys(array_keys($dash_months), 0);
@@ -285,8 +285,14 @@ foreach($chart_detail_type_month as $type => $monthsData) {
 
 <div class="tab-content bg-white border border-top-0 p-3 rounded-bottom shadow-sm" id="viewTabsContent">
 
+    <!-- ========================================================================================= -->
+    <!-- VUE 1 : CONSULTANT / MOIS -->
     <div class="tab-pane active" id="vue1" role="tabpanel">
         
+        <!-- Inclusion des Nouveaux KPIs pour le Top Management -->
+        <?php include 'views/kpi_global.php'; ?>
+
+        <!-- Inclusion du Graphique Global aligné -->
         <?php include 'views/chart_global.php'; ?>
 
         <div class="table-responsive">
@@ -382,6 +388,8 @@ foreach($chart_detail_type_month as $type => $monthsData) {
         <div class="mt-2 small text-muted"><i class="bi bi-info-circle"></i> Cliquez sur une cellule pour consulter le détail des affectations de ce mois.</div>
     </div>
 
+    <!-- ========================================================================================= -->
+    <!-- VUE DÉTAIL CONSULTANT -->
     <div class="tab-pane" id="vue-detail" role="tabpanel">
         
         <?php if ($_SESSION['role'] === 'admin' || $canDashboard): ?>
@@ -399,6 +407,7 @@ foreach($chart_detail_type_month as $type => $monthsData) {
             <h5 class="mb-3 text-primary fw-bold"><i class="bi bi-person-badge"></i> Mon Détail d'Affectation</h5>
         <?php endif; ?>
 
+        <!-- GRAPHIQUE DÉTAIL DU CONSULTANT SÉLECTIONNÉ -->
         <div class="bg-light p-3 rounded shadow-sm border mb-4">
             <h6 class="fw-bold text-muted small text-uppercase mb-3"><i class="bi bi-bar-chart-fill text-primary"></i> Répartition par type d'activité</h6>
             <canvas id="detailChart" style="max-height: 250px; width: 100%;"></canvas>
@@ -483,6 +492,8 @@ foreach($chart_detail_type_month as $type => $monthsData) {
         </div>
     </div>
 
+    <!-- ========================================================================================= -->
+    <!-- VUE 2 : PROJET / MOIS -->
     <div class="tab-pane" id="vue2" role="tabpanel">
         <div class="table-responsive">
             <table class="table table-bordered table-hover align-middle mb-0">
@@ -554,6 +565,8 @@ foreach($chart_detail_type_month as $type => $monthsData) {
         </div>
     </div>
 
+    <!-- ========================================================================================= -->
+    <!-- VUE 3 : PROJET / CONSULTANT -->
     <div class="tab-pane" id="vue3" role="tabpanel">
         <div class="alert alert-light border small py-2 mb-3">
             <i class="bi bi-info-square"></i> Cette vue agrège l'effort total de chaque consultant sur la période affichée (les 6 mois).
@@ -621,6 +634,8 @@ foreach($chart_detail_type_month as $type => $monthsData) {
         </div>
     </div>
 
+    <!-- ========================================================================================= -->
+    <!-- VUE 4 : SAISIE MANUELLE LIBRE -->
     <?php if($canSaisie): ?>
     <div class="tab-pane mt-3" id="saisie" role="tabpanel">
         <div class="row justify-content-center">
@@ -687,6 +702,7 @@ foreach($chart_detail_type_month as $type => $monthsData) {
 
 </div>
 
+<!-- MODALE D'AFFECTATION -->
 <div class="modal fade" id="fastAddModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered modal-sm">
     <div class="modal-content border-0 shadow-lg">
@@ -732,8 +748,10 @@ foreach($chart_detail_type_month as $type => $monthsData) {
                     <span>Volume (0 pour effacer) :</span>
                 </label>
                 
+                <!-- Le Slider -->
                 <input type="range" class="form-range mb-2" id="valeur_slider" min="0" max="10" step="0.1" value="1" oninput="syncValeur(this.value, 'slider')">
                 
+                <!-- Le Champ Texte synchronisé -->
                 <div class="input-group input-group-sm">
                     <input type="text" inputmode="decimal" pattern="^[0-9]*([.,][0-9]+)?$" name="valeur" id="valeur_input" class="form-control text-center fw-bold" value="1" placeholder="ex: 0.5" required oninput="syncValeur(this.value, 'input')">
                 </div>
@@ -753,6 +771,7 @@ foreach($chart_detail_type_month as $type => $monthsData) {
   </div>
 </div>
 
+<!-- MODALE DÉTAIL D'AFFECTATION -->
 <div class="modal fade" id="detailModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
@@ -783,6 +802,7 @@ foreach($chart_detail_type_month as $type => $monthsData) {
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<!-- CDN Chart.js pour le graphique analytique -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
