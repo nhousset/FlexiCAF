@@ -5,7 +5,6 @@ $allUsers = getDb(FILE_USERS);
 
 $canSaisie = hasPermission('can_saisie');
 $canDashboard = hasPermission('can_dashboard');
-// VÉRIFICATION DE LA NOUVELLE PERMISSION
 $canSaisieOthers = hasPermission('can_saisie_others') || $_SESSION['role'] === 'admin';
 
 // --------------------------------------------------------
@@ -197,67 +196,8 @@ $typeColors = [
 ];
 $userColors = ['#fca5a5', '#fdba74', '#fde047', '#86efac', '#5eead4', '#67e8f9', '#93c5fd', '#a5b4fc', '#d8b4fe', '#f9a8d4'];
 
-$chartDatasetsType = [];
-$chartDatasetsUser = [];
-$chartDatasetsDetail = [];
-
-// Dataset commun (La Ligne de Capacité Globale)
-$capData = [];
-foreach($dash_months as $m_key => $m_data) {
-    $capData[] = $m_data['working_days'] * $real_users_count;
-}
-$capDataset = [
-    'type' => 'line',
-    'label' => 'Capacité de l\'équipe',
-    'data' => $capData,
-    'borderColor' => '#ef4444', 
-    'backgroundColor' => '#ef4444',
-    'borderWidth' => 2,
-    'fill' => false,
-    'tension' => 0.3,
-    'pointRadius' => 5,
-    'pointBackgroundColor' => '#ffffff',
-    'pointBorderColor' => '#ef4444',
-    'pointBorderWidth' => 2,
-    'order' => 0 
-];
-
-$chartDatasetsType[] = $capDataset;
-$chartDatasetsUser[] = $capDataset;
-
-// Données : VUE PAR TYPE (Global)
-foreach($chart_type_month as $type => $monthsData) {
-    if(array_sum($monthsData) > 0) {
-        $chartDatasetsType[] = [
-            'type' => 'bar',
-            'label' => $type,
-            'data' => array_values($monthsData),
-            'backgroundColor' => $typeColors[$type] ?? '#cbd5e1', 
-            'borderColor' => 'rgba(0,0,0,0.1)',
-            'borderWidth' => 1,
-            'order' => 1
-        ];
-    }
-}
-
-// Données : VUE PAR CONSULTANT (Global)
-$cIndex = 0;
-foreach($displayUsers as $uid => $uname) {
-    if (isset($pivot_user_month[$uid]) && array_sum($pivot_user_month[$uid]) > 0) {
-        $chartDatasetsUser[] = [
-            'type' => 'bar',
-            'label' => $uname,
-            'data' => array_values($pivot_user_month[$uid]),
-            'backgroundColor' => $userColors[$cIndex % count($userColors)], 
-            'borderColor' => 'rgba(0,0,0,0.1)',
-            'borderWidth' => 1,
-            'order' => 1
-        ];
-        $cIndex++;
-    }
-}
-
 // Données : VUE DÉTAIL DU CONSULTANT SÉLECTIONNÉ
+$chartDatasetsDetail = [];
 $capDataDetail = [];
 foreach($dash_months as $m_key => $m_data) {
     $capDataDetail[] = ($detail_uid === '_virtual_unassigned_') ? 0 : $m_data['working_days'];
@@ -268,13 +208,14 @@ $chartDatasetsDetail[] = [
     'data' => $capDataDetail,
     'borderColor' => '#ef4444', 
     'backgroundColor' => '#ef4444',
-    'borderWidth' => 2,
+    'borderWidth' => 3,
     'fill' => false,
-    'tension' => 0.3,
+    'tension' => 0.4,
     'pointRadius' => 5,
     'pointBackgroundColor' => '#ffffff',
     'pointBorderColor' => '#ef4444',
     'pointBorderWidth' => 2,
+    'pointHoverRadius' => 7,
     'order' => 0 
 ];
 
@@ -285,8 +226,9 @@ foreach($chart_detail_type_month as $type => $monthsData) {
             'label' => $type,
             'data' => array_values($monthsData),
             'backgroundColor' => $typeColors[$type] ?? '#cbd5e1', 
-            'borderColor' => 'rgba(0,0,0,0.1)',
+            'borderColor' => 'rgba(0,0,0,0.05)',
             'borderWidth' => 1,
+            'borderRadius' => 6,
             'order' => 1
         ];
     }
@@ -334,9 +276,6 @@ foreach($chart_detail_type_month as $type => $monthsData) {
   <li class="nav-item" role="presentation">
     <button class="nav-link" id="vue3-tab" data-bs-toggle="tab" data-bs-target="#vue3" type="button"><i class="bi bi-grid-3x3-gap-fill"></i> Projet / Consultant</button>
   </li>
-  <li class="nav-item" role="presentation">
-    <button class="nav-link text-secondary fw-bold" id="vue-graph-tab" data-bs-toggle="tab" data-bs-target="#vue-graph" type="button"><i class="bi bi-bar-chart-fill"></i> Graphique Global</button>
-  </li>
   <?php if($canSaisie): ?>
   <li class="nav-item ms-auto" role="presentation">
     <button class="nav-link text-success fw-bold" id="saisie-tab" data-bs-toggle="tab" data-bs-target="#saisie" type="button"><i class="bi bi-plus-circle"></i> Saisie Libre</button>
@@ -346,9 +285,10 @@ foreach($chart_detail_type_month as $type => $monthsData) {
 
 <div class="tab-content bg-white border border-top-0 p-3 rounded-bottom shadow-sm" id="viewTabsContent">
 
-    <!-- ========================================================================================= -->
-    <!-- VUE 1 : CONSULTANT / MOIS -->
     <div class="tab-pane active" id="vue1" role="tabpanel">
+        
+        <?php include 'views/chart_global.php'; ?>
+
         <div class="table-responsive">
             <table class="table table-bordered table-hover text-center align-middle mb-0">
                 <thead class="table-light">
@@ -442,8 +382,6 @@ foreach($chart_detail_type_month as $type => $monthsData) {
         <div class="mt-2 small text-muted"><i class="bi bi-info-circle"></i> Cliquez sur une cellule pour consulter le détail des affectations de ce mois.</div>
     </div>
 
-    <!-- ========================================================================================= -->
-    <!-- VUE DÉTAIL CONSULTANT -->
     <div class="tab-pane" id="vue-detail" role="tabpanel">
         
         <?php if ($_SESSION['role'] === 'admin' || $canDashboard): ?>
@@ -461,8 +399,7 @@ foreach($chart_detail_type_month as $type => $monthsData) {
             <h5 class="mb-3 text-primary fw-bold"><i class="bi bi-person-badge"></i> Mon Détail d'Affectation</h5>
         <?php endif; ?>
 
-        <!-- NOUVEAU GRAPHIQUE DÉTAIL -->
-        <div class="bg-white p-3 rounded shadow-sm border mb-4">
+        <div class="bg-light p-3 rounded shadow-sm border mb-4">
             <h6 class="fw-bold text-muted small text-uppercase mb-3"><i class="bi bi-bar-chart-fill text-primary"></i> Répartition par type d'activité</h6>
             <canvas id="detailChart" style="max-height: 250px; width: 100%;"></canvas>
         </div>
@@ -546,8 +483,6 @@ foreach($chart_detail_type_month as $type => $monthsData) {
         </div>
     </div>
 
-    <!-- ========================================================================================= -->
-    <!-- VUE 2 : PROJET / MOIS -->
     <div class="tab-pane" id="vue2" role="tabpanel">
         <div class="table-responsive">
             <table class="table table-bordered table-hover align-middle mb-0">
@@ -619,8 +554,6 @@ foreach($chart_detail_type_month as $type => $monthsData) {
         </div>
     </div>
 
-    <!-- ========================================================================================= -->
-    <!-- VUE 3 : PROJET / CONSULTANT -->
     <div class="tab-pane" id="vue3" role="tabpanel">
         <div class="alert alert-light border small py-2 mb-3">
             <i class="bi bi-info-square"></i> Cette vue agrège l'effort total de chaque consultant sur la période affichée (les 6 mois).
@@ -688,30 +621,6 @@ foreach($chart_detail_type_month as $type => $monthsData) {
         </div>
     </div>
 
-    <!-- ========================================================================================= -->
-    <!-- VUE : GRAPHIQUE GLOBAL (CHART.JS) -->
-    <div class="tab-pane" id="vue-graph" role="tabpanel">
-        <div class="alert alert-light border small py-2 mb-3 shadow-sm d-flex flex-wrap justify-content-between align-items-center gap-2">
-            <div>
-                <i class="bi bi-info-square text-primary"></i> <strong>Aperçu analytique :</strong> Répartition de la charge globale superposée à la capacité théorique.
-            </div>
-            
-            <!-- TOGGLE TYPE vs CONSULTANT -->
-            <div class="btn-group shadow-sm" role="group">
-                <input type="radio" class="btn-check" name="chartToggle" id="chartType" autocomplete="off" checked onchange="updateChartView('type')">
-                <label class="btn btn-outline-primary btn-sm fw-bold" for="chartType">Par Type</label>
-
-                <input type="radio" class="btn-check" name="chartToggle" id="chartUser" autocomplete="off" onchange="updateChartView('user')">
-                <label class="btn btn-outline-primary btn-sm fw-bold" for="chartUser">Par Consultant</label>
-            </div>
-        </div>
-        <div class="bg-white p-4 rounded shadow-sm border">
-            <canvas id="capacityChart" style="max-height: 500px; width: 100%;"></canvas>
-        </div>
-    </div>
-
-    <!-- ========================================================================================= -->
-    <!-- VUE 4 : SAISIE MANUELLE LIBRE -->
     <?php if($canSaisie): ?>
     <div class="tab-pane mt-3" id="saisie" role="tabpanel">
         <div class="row justify-content-center">
@@ -778,7 +687,6 @@ foreach($chart_detail_type_month as $type => $monthsData) {
 
 </div>
 
-<!-- MODALE D'AFFECTATION -->
 <div class="modal fade" id="fastAddModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered modal-sm">
     <div class="modal-content border-0 shadow-lg">
@@ -824,10 +732,8 @@ foreach($chart_detail_type_month as $type => $monthsData) {
                     <span>Volume (0 pour effacer) :</span>
                 </label>
                 
-                <!-- Le Slider -->
                 <input type="range" class="form-range mb-2" id="valeur_slider" min="0" max="10" step="0.1" value="1" oninput="syncValeur(this.value, 'slider')">
                 
-                <!-- Le Champ Texte synchronisé -->
                 <div class="input-group input-group-sm">
                     <input type="text" inputmode="decimal" pattern="^[0-9]*([.,][0-9]+)?$" name="valeur" id="valeur_input" class="form-control text-center fw-bold" value="1" placeholder="ex: 0.5" required oninput="syncValeur(this.value, 'input')">
                 </div>
@@ -847,7 +753,6 @@ foreach($chart_detail_type_month as $type => $monthsData) {
   </div>
 </div>
 
-<!-- MODALE DÉTAIL D'AFFECTATION -->
 <div class="modal fade" id="detailModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
@@ -878,15 +783,9 @@ foreach($chart_detail_type_month as $type => $monthsData) {
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<!-- CDN Chart.js pour le graphique analytique -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
-// VARIABLES GLOBALES POUR LE GRAPHIQUE GLOBAL
-window.chartDatasetsType = <?= json_encode($chartDatasetsType) ?>;
-window.chartDatasetsUser = <?= json_encode($chartDatasetsUser) ?>;
-window.capacityChartInstance = null;
-
 document.addEventListener("DOMContentLoaded", function() {
     let activeTab = localStorage.getItem('activeTab_monthly');
     if (activeTab && document.querySelector(activeTab)) {
@@ -910,49 +809,7 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     }
 
-    // Initialisation du Graphique Global
-    const ctx = document.getElementById('capacityChart');
-    if (ctx) {
-        window.capacityChartInstance = new Chart(ctx.getContext('2d'), {
-            data: {
-                labels: <?= json_encode(array_column($dash_months, 'label')) ?>,
-                datasets: window.chartDatasetsType // On charge par type par défaut
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    x: { 
-                        stacked: true,
-                        grid: { display: false }
-                    },
-                    y: { 
-                        stacked: true, 
-                        beginAtZero: true, 
-                        title: { display: true, text: 'Charge (Jours)', font: {weight: 'bold'} } 
-                    }
-                },
-                plugins: {
-                    legend: { position: 'top' },
-                    tooltip: { mode: 'index', intersect: false }
-                },
-                interaction: {
-                    mode: 'nearest',
-                    axis: 'x',
-                    intersect: false
-                }
-            }
-        });
-
-        const graphTab = document.getElementById('vue-graph-tab');
-        if (graphTab) {
-            graphTab.addEventListener('shown.bs.tab', function () {
-                window.capacityChartInstance.resize();
-            });
-        }
-    }
-
-    // Initialisation du Graphique Détail Consultant
+    // Initialisation du Graphique Détail Consultant avec le design modernisé
     const ctxDetail = document.getElementById('detailChart');
     if (ctxDetail) {
         let detailChart = new Chart(ctxDetail.getContext('2d'), {
@@ -963,13 +820,34 @@ document.addEventListener("DOMContentLoaded", function() {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                layout: { padding: { top: 10, bottom: 10 } },
                 scales: {
-                    x: { stacked: true, grid: { display: false } },
-                    y: { stacked: true, beginAtZero: true, title: { display: true, text: 'Charge (Jours)', font: {weight: 'bold'} } }
+                    x: { 
+                        stacked: true, 
+                        grid: { display: false } 
+                    },
+                    y: { 
+                        stacked: true, 
+                        beginAtZero: true, 
+                        title: { display: false },
+                        grid: { color: 'rgba(0,0,0,0.05)', borderDash: [5,5] },
+                        border: { display: false }
+                    }
                 },
                 plugins: {
-                    legend: { position: 'top' },
-                    tooltip: { mode: 'index', intersect: false }
+                    legend: { 
+                        position: 'top', 
+                        labels: { usePointStyle: true, boxWidth: 8, font: { family: "'Plus Jakarta Sans', sans-serif", weight: '600' } } 
+                    },
+                    tooltip: { 
+                        mode: 'index', 
+                        intersect: false, 
+                        backgroundColor: 'rgba(15, 23, 42, 0.9)', 
+                        titleFont: { size: 13, family: "'Plus Jakarta Sans', sans-serif" },
+                        bodyFont: { size: 12, family: "'Plus Jakarta Sans', sans-serif" },
+                        padding: 10, 
+                        cornerRadius: 8 
+                    }
                 },
                 interaction: { mode: 'nearest', axis: 'x', intersect: false }
             }
@@ -983,18 +861,6 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     }
 });
-
-// NOUVELLE FONCTION : Bascule du graphique (Type <-> Consultant)
-function updateChartView(viewType) {
-    if (window.capacityChartInstance) {
-        if (viewType === 'user') {
-            window.capacityChartInstance.data.datasets = window.chartDatasetsUser;
-        } else {
-            window.capacityChartInstance.data.datasets = window.chartDatasetsType;
-        }
-        window.capacityChartInstance.update();
-    }
-}
 
 function syncValeur(val, source) {
     let v = val.toString().replace(',', '.');
