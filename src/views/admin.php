@@ -32,6 +32,9 @@ $pastel_colors = ['#fca5a5', '#fdba74', '#fde047', '#86efac', '#5eead4', '#67e8f
     <?php endif; ?>
 </div>
 
+<!-- ========================================================= -->
+<!-- PARAMÈTRES GLOBAUX                                        -->
+<!-- ========================================================= -->
 <?php if ($_SESSION['role'] === 'admin'): ?>
     <?php if(isset($_GET['settings_success'])): ?>
         <div class="alert alert-success small py-2 fw-bold"><i class="bi bi-check-circle"></i> Paramètres mis à jour avec succès.</div>
@@ -46,6 +49,7 @@ $pastel_colors = ['#fca5a5', '#fdba74', '#fde047', '#86efac', '#5eead4', '#67e8f
                     <?php $current_settings = getDb(FILE_SETTINGS); ?>
                     <input type="text" name="app_name" class="form-control fw-bold" value="<?= htmlspecialchars($current_settings['app_name'] ?? 'FlexiCAF') ?>" required>
                     
+                    <!-- EVOLUTION : Option pour activer/désactiver le mécanisme "Reste à planifier" -->
                     <div class="form-check form-switch mt-2">
                         <input class="form-check-input" type="checkbox" name="show_backlog" id="show_backlog" <?= (!isset($current_settings['show_backlog']) || $current_settings['show_backlog']) ? 'checked' : '' ?>>
                         <label class="form-check-label small fw-bold text-secondary" for="show_backlog">Activer le mécanisme de Backlog "Reste à planifier"</label>
@@ -60,6 +64,7 @@ $pastel_colors = ['#fca5a5', '#fdba74', '#fde047', '#86efac', '#5eead4', '#67e8f
 <?php endif; ?>
 
 <div class="row">
+    <!-- GESTION UTILISATEURS -->
     <?php if ($_SESSION['role'] === 'admin'): ?>
     <div class="col-md-6">
         <div class="card border-info shadow-sm mb-4">
@@ -124,6 +129,7 @@ $pastel_colors = ['#fca5a5', '#fdba74', '#fde047', '#86efac', '#5eead4', '#67e8f
     </div>
     <?php endif; ?>
 
+    <!-- REFERENTIEL TACHES -->
     <div class="col-md-<?= ($_SESSION['role'] === 'admin') ? '6' : '12' ?>">
         <div class="card border-secondary shadow-sm mb-4">
             <div class="card-header bg-secondary text-white"><i class="bi bi-tags-fill"></i> Catalogue des Activités</div>
@@ -200,10 +206,12 @@ $pastel_colors = ['#fca5a5', '#fdba74', '#fde047', '#86efac', '#5eead4', '#67e8f
     </div>
 </div>
 
+<!-- AUDIT LOG -->
 <?php if ($_SESSION['role'] === 'admin'): ?>
 <div class="row mt-4"><div class="col-12"><div class="card border-dark shadow-sm mb-4"><div class="card-header bg-dark text-white d-flex justify-content-between align-items-center"><div><i class="bi bi-clock-history"></i> Historique des Actions (Audit)</div><span class="badge bg-light text-dark">Dernières 500 actions</span></div><div class="card-body p-0"><div class="table-responsive" style="max-height: 400px;"><table class="table table-hover table-sm align-middle mb-0 small"><thead class="table-light" style="position: sticky; top: 0; z-index: 10;"><tr><th style="width: 150px; padding-left: 15px;">Date</th><th style="width: 150px;">Utilisateur</th><th style="width: 150px;">Type d'action</th><th>Détails</th></tr></thead><tbody><?php $auditLogs = getDb(FILE_AUDIT); if(empty($auditLogs)): ?><tr><td colspan="4" class="text-center text-muted py-4">Aucune action enregistrée.</td></tr><?php else: foreach($auditLogs as $log): ?><tr><td class="text-muted ps-3"><?= htmlspecialchars(date('d/m/Y H:i:s', strtotime($log['date']))) ?></td><td class="fw-bold"><?= htmlspecialchars($log['user']) ?></td><td><span class="badge bg-secondary"><?= htmlspecialchars($log['action']) ?></span></td><td class="text-truncate" style="max-width: 400px;" title="<?= htmlspecialchars($log['details']) ?>"><?= htmlspecialchars($log['details']) ?></td></tr><?php endforeach; endif; ?></tbody></table></div></div></div></div></div>
 <?php endif; ?>
 
+<!-- MODALES DES EDITIONS ACCES -->
 <?php if ($_SESSION['role'] === 'admin'): foreach(getDb(FILE_USERS) as $id => $u): 
     $has_saisie = isset($u['can_saisie']) ? $u['can_saisie'] : true; $has_saisie_others = isset($u['can_saisie_others']) ? $u['can_saisie_others'] : false;
     $has_dash = isset($u['can_dashboard']) ? $u['can_dashboard'] : false; $has_tasks_admin = isset($u['can_manage_tasks']) ? $u['can_manage_tasks'] : false; $is_excluded = isset($u['is_excluded']) ? $u['is_excluded'] : false;
@@ -211,6 +219,7 @@ $pastel_colors = ['#fca5a5', '#fdba74', '#fde047', '#86efac', '#5eead4', '#67e8f
 <div class="modal fade" id="editUserModal-<?= $id ?>" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header bg-light py-2"><h6 class="modal-title mb-0">Modifier : <?= htmlspecialchars($u['name'] ?? '') ?></h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><form method="POST"><input type="hidden" name="edit_user" value="1"><input type="hidden" name="user_id" value="<?= $id ?>"><div class="mb-2"><label class="small fw-bold">Nom</label><input type="text" name="u_name" class="form-control form-control-sm" value="<?= htmlspecialchars($u['name'] ?? '') ?>" required></div><div class="mb-2"><label class="small fw-bold">Email</label><input type="email" name="u_email" class="form-control form-control-sm" value="<?= htmlspecialchars($u['email'] ?? '') ?>" required></div><div class="mb-3"><label class="small fw-bold">Nouveau mot de passe</label><input type="password" name="u_pass" class="form-control form-control-sm"></div><div class="bg-light p-2 mb-3 rounded border"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" name="u_can_saisie" id="editSaisie-<?= $id ?>" <?= $has_saisie ? 'checked' : '' ?>><label class="form-check-label small" for="editSaisie-<?= $id ?>">Autoriser la Saisie</label></div><div class="form-check form-switch mt-1"><input class="form-check-input" type="checkbox" name="u_can_saisie_others" id="editSaisieOthers-<?= $id ?>" <?= $has_saisie_others ? 'checked' : '' ?>><label class="form-check-label small text-primary fw-bold" for="editSaisieOthers-<?= $id ?>">Saisie pour un Tiers</label></div><div class="form-check form-switch mt-1"><input class="form-check-input" type="checkbox" name="u_can_dashboard" id="editDash-<?= $id ?>" <?= $has_dash ? 'checked' : '' ?>><label class="form-check-label small" for="editDash-<?= $id ?>">Autoriser le Dashboard Manager</label></div><div class="form-check form-switch mt-1"><input class="form-check-input" type="checkbox" name="u_can_manage_tasks" id="editTasks-<?= $id ?>" <?= $has_tasks_admin ? 'checked' : '' ?>><label class="form-check-label small" for="editTasks-<?= $id ?>">Administrateur des activités</label></div><hr class="my-2"><div class="form-check form-switch mt-1"><input class="form-check-input" type="checkbox" name="u_is_excluded" id="editExcl-<?= $id ?>" <?= $is_excluded ? 'checked' : '' ?>><label class="form-check-label small text-danger" for="editExcl-<?= $id ?>">Masquer du Capacity Planning</label></div></div><button type="submit" class="btn btn-primary btn-sm w-100">Enregistrer</button></form></div></div></div></div>
 <?php endforeach; endif; ?>
 
+<!-- MODALES DES EDITIONS ACTIVITES -->
 <?php if ($_SESSION['role'] === 'admin' || hasPermission('can_manage_tasks')): foreach(getDb(FILE_TASKS) as $id => $t): $color = $t['color'] ?? '#e2e8f0'; $type = $t['type'] ?? 'Technique'; ?>
 <div class="modal fade" id="editTaskModal-<?= $id ?>" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header bg-light py-2"><h6 class="modal-title mb-0">Modifier : <?= htmlspecialchars($t['title']) ?></h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><form method="POST"><input type="hidden" name="edit_task" value="1"><input type="hidden" name="task_id" value="<?= $id ?>"><div class="mb-2"><label class="small fw-bold">Titre au planning</label><input type="text" name="t_title" class="form-control form-control-sm" value="<?= htmlspecialchars($t['title']) ?>" required></div><div class="row"><div class="col-6 mb-2"><label class="small fw-bold">Type</label><select name="t_type" class="form-select form-select-sm" required><option value="Fonctionnel" <?= $type === 'Fonctionnel' ? 'selected' : '' ?>>Fonctionnel</option><option value="Technique" <?= $type === 'Technique' ? 'selected' : '' ?>>Technique</option><option value="Structure" <?= $type === 'Structure' ? 'selected' : '' ?>>Structure</option><option value="Formation" <?= $type === 'Formation' ? 'selected' : '' ?>>Formation</option><option value="Absences" <?= $type === 'Absences' ? 'selected' : '' ?>>Absences</option></select></div><div class="col-6 mb-2"><label class="small fw-bold">Code Projet (ITBM)</label><input type="text" name="t_itbm" class="form-control form-control-sm" value="<?= htmlspecialchars($t['itbm']) ?>" required></div></div><div class="mb-3"><label class="small fw-bold">Description courte</label><input type="text" name="t_desc" class="form-control form-control-sm" value="<?= htmlspecialchars($t['desc'] ?? '') ?>"></div><div class="mb-4"><label class="small fw-bold d-block mb-2">Couleur</label><div class="d-flex flex-wrap gap-2"><?php $found = in_array($color, $pastel_colors); foreach($pastel_colors as $idx => $col): $isChecked = ($color === $col || (!$found && $idx === 0)) ? 'checked' : ''; ?><input type="radio" class="btn-check" name="t_color" id="edit_color_<?= $id ?>_<?= $idx ?>" value="<?= $col ?>" <?= $isChecked ?>><label class="color-picker-label shadow-sm" style="background-color: <?= $col ?>;" for="edit_color_<?= $id ?>_<?= $idx ?>"></label><?php endforeach; ?></div></div><button type="submit" class="btn btn-primary btn-sm w-100 fw-bold">Enregistrer</button></form></div></div></div></div>
 <?php endforeach; endif; ?>
