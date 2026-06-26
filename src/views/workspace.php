@@ -52,7 +52,7 @@ if ($isManager) {
             $displayUsers[$id] = mb_strtoupper($u['name'], 'UTF-8');
         }
     }
-    // EVOLUTION: N'ajouter le Backlog virtuel que s'il est activé en administration
+    // N'ajouter le Backlog virtuel que s'il est activé en administration
     if ($show_backlog) {
         $displayUsers['_virtual_unassigned_'] = 'RESTE À PLANIFIER';
     }
@@ -228,15 +228,13 @@ function getProjectHeatmapStyle($valeur) {
       <li class="nav-item" role="presentation"><button class="nav-link" id="vue3-tab" data-bs-toggle="tab" data-bs-target="#vue3" type="button"><i class="bi bi-grid-3x3-gap-fill"></i> Projet / Consultant</button></li>
   <?php else: ?>
       <li class="nav-item" role="presentation"><button class="nav-link active text-primary fw-bold" id="vue-detail-tab" data-bs-toggle="tab" data-bs-target="#vue-detail" type="button"><i class="bi bi-person-badge"></i> Mon activité</button></li>
-      <li class="nav-item" role="presentation"><button class="nav-link" id="vue2-tab" data-bs-toggle="tab" data-bs-target="#vue2" type="button"><i class="bi bi-folder-fill"></i> Mes projets</button></li>
+      <li class="nav-item" role="presentation"><button class="nav-link text-secondary fw-bold" id="vue-graph-user-tab" data-bs-toggle="tab" data-bs-target="#vue-graph-user" type="button"><i class="bi bi-bar-chart-fill"></i> Graphique</button></li>
   <?php endif; ?>
 </ul>
 
 <div class="tab-content bg-white border border-top-0 p-3 rounded-bottom shadow-sm" id="viewTabsContent">
 
     <?php if ($isManager): ?>
-    <!-- ========================================================================================= -->
-    <!-- VUE 1 : CONSULTANT / MOIS -->
     <div class="tab-pane active" id="vue1" role="tabpanel">
         <div class="d-flex justify-content-end mb-3 gap-2">
             <button class="btn btn-sm btn-outline-secondary" id="btnToggleKpi" onclick="toggleDashboardSection('kpi_container', 'cookie_kpi')"><i class="bi bi-eye-slash"></i> Masquer KPIs</button>
@@ -305,8 +303,6 @@ function getProjectHeatmapStyle($valeur) {
     </div>
     <?php endif; ?>
 
-    <!-- ========================================================================================= -->
-    <!-- VUE DÉTAIL CONSULTANT -->
     <div class="tab-pane <?= !$isManager ? 'active' : '' ?>" id="vue-detail" role="tabpanel">
         <?php if ($isManager): ?>
         <form method="GET" class="mb-4 d-flex align-items-center bg-light p-2 rounded border">
@@ -316,12 +312,14 @@ function getProjectHeatmapStyle($valeur) {
                 <?php foreach($displayUsers as $uid => $uname): ?><option value="<?= $uid ?>" <?= $uid === $detail_uid ? 'selected' : '' ?>><?= htmlspecialchars($uname) ?></option><?php endforeach; ?>
             </select>
         </form>
-        <?php else: ?><h5 class="mb-3 text-primary fw-bold"><i class="bi bi-person-badge"></i> Mon Activité</h5><?php endif; ?>
-
+        
         <div class="bg-light p-3 rounded shadow-sm border mb-4">
             <h6 class="fw-bold text-muted small text-uppercase mb-3"><i class="bi bi-bar-chart-fill text-primary"></i> Répartition par type d'activité</h6>
             <canvas id="detailChart" style="max-height: 250px; width: 100%;"></canvas>
         </div>
+        <?php else: ?>
+            <h5 class="mb-3 text-primary fw-bold"><i class="bi bi-person-badge"></i> Mon Activité</h5>
+        <?php endif; ?>
 
         <div class="table-responsive">
             <table class="table table-bordered table-hover align-middle mb-0">
@@ -329,7 +327,13 @@ function getProjectHeatmapStyle($valeur) {
                     <tr><th class="text-start text-muted text-uppercase small w-25">Projets & Activités</th><?php foreach($dash_months as $m_key => $m_data): ?><th><div class="fs-6 fw-bold text-dark"><?= $m_data['label'] ?></div></th><?php endforeach; ?></tr>
                 </thead>
                 <tbody>
-                    <?php foreach($tasksByType as $type => $groupTasks): ?>
+                    <?php 
+                    foreach($tasksByType as $type => $groupTasks): 
+                        $hasDataInGroup = false;
+                        foreach($groupTasks as $tid => $t) {
+                            if(array_sum($detail_grid[$tid]) > 0) { $hasDataInGroup = true; break; }
+                        }
+                    ?>
                         <tr class="table-secondary"><td colspan="7" class="fw-bold text-uppercase" style="letter-spacing: 1px; font-size: 0.8rem;"><i class="bi bi-collection"></i> <?= mb_strtoupper(htmlspecialchars($type), 'UTF-8') ?></td></tr>
                         <?php foreach($groupTasks as $tid => $t): $color = htmlspecialchars($t['color'] ?? '#e2e8f0'); ?>
                         <tr>
@@ -347,7 +351,7 @@ function getProjectHeatmapStyle($valeur) {
                 </tbody>
                 <tfoot class="table-dark text-center">
                     <tr>
-                        <td class="text-end fw-bold align-middle">TOTAL AFFECTÉ</td>
+                        <td class="text-end fw-bold align-middle">TOTAL AFFECTÉ (Ce profil)</td>
                         <?php foreach($dash_months as $m_key => $m_data): 
                             $total_load = $pivot_user_month[$detail_uid][$m_key] ?? 0; $cap_max = ($detail_uid === '_virtual_unassigned_') ? 0 : $m_data['working_days'];
                             $perc = $cap_max > 0 ? round(($total_load / $cap_max) * 100) : 0; $style = getMonthlyHeatmapStyle($total_load, $cap_max, ($detail_uid === '_virtual_unassigned_'));
@@ -360,8 +364,17 @@ function getProjectHeatmapStyle($valeur) {
         </div>
     </div>
 
-    <!-- ========================================================================================= -->
-    <!-- VUE 2 : PROJET / MOIS -->
+    <?php if (!$isManager): ?>
+    <div class="tab-pane" id="vue-graph-user" role="tabpanel">
+        <h5 class="mb-3 text-secondary fw-bold"><i class="bi bi-bar-chart-fill"></i> Mon Graphique</h5>
+        <div class="bg-light p-3 rounded shadow-sm border mb-4">
+            <h6 class="fw-bold text-muted small text-uppercase mb-3"><i class="bi bi-bar-chart-fill text-primary"></i> Répartition de ma charge par type d'activité</h6>
+            <canvas id="detailChart" style="max-height: 400px; width: 100%;"></canvas>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <?php if ($isManager): ?>
     <div class="tab-pane" id="vue2" role="tabpanel">
         <div class="table-responsive">
             <table class="table table-bordered table-hover align-middle mb-0">
@@ -393,9 +406,6 @@ function getProjectHeatmapStyle($valeur) {
         </div>
     </div>
 
-    <?php if ($isManager): ?>
-    <!-- ========================================================================================= -->
-    <!-- VUE 3 : PROJET / CONSULTANT -->
     <div class="tab-pane" id="vue3" role="tabpanel">
         <div class="table-responsive">
             <table class="table table-bordered table-hover align-middle mb-0 text-center">
@@ -430,10 +440,8 @@ function getProjectHeatmapStyle($valeur) {
 
 </div>
 
-<!-- MODALE AFFECTATION RAPIDE -->
 <div class="modal fade" id="fastAddModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-sm"><div class="modal-content border-0 shadow-lg"><div class="modal-header py-2 border-0 transition-color" id="fastAddModalHeader" style="background-color: #212529; color: #fff;"><h6 class="modal-title mb-0 fw-bold" id="fastAddModalTitle"><i class="bi bi-journal-check me-1"></i> Affectation</h6><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" id="fastAddModalCloseBtn"></button></div><div class="modal-body bg-light"><form method="POST" action="?action=home<?= isset($_GET['date']) ? '&date='.$_GET['date'] : '' ?><?= isset($_GET['detail_uid']) ? '&detail_uid='.$_GET['detail_uid'] : '' ?>"><input type="hidden" name="month_saisie" id="modal_month" value=""><div class="text-center mb-3"><div id="modal_uname_display" class="fw-bold text-dark fs-6 mb-1"></div><?php if ($canSaisieOthers): ?><select name="target_user_id" id="modal_uid_select" class="form-select form-select-sm border-primary fw-bold mb-2 d-none" required><?php foreach($displayUsers as $uid => $uname): ?><option value="<?= $uid ?>"><?= htmlspecialchars($uname) ?></option><?php endforeach; ?></select><?php else: ?><input type="hidden" name="target_user_id" id="modal_uid_hidden" value=""><?php endif; ?><div class="badge bg-secondary shadow-sm" id="modal_month_display"></div></div><div class="mb-3"><label class="form-label small fw-bold text-muted">Sur le projet :</label><select name="task_id" id="modal_task_id" class="form-select form-select-sm" required onchange="updateModalColor()"><option value="" disabled selected data-color="#212529">Sélectionner...</option><?php foreach($tasks as $id => $t): $type = htmlspecialchars($t['type'] ?? 'Technique'); $color = htmlspecialchars($t['color'] ?? '#212529'); ?><option value="<?= $id ?>" data-color="<?= $color ?>">[<?= mb_strtoupper($type, 'UTF-8') ?>] <?= htmlspecialchars($t['title']) ?></option><?php endforeach; ?></select></div><div class="mb-3"><label class="form-label small fw-bold text-muted d-flex justify-content-between"><span>Volume :</span></label><input type="range" class="form-range mb-2" id="valeur_slider" min="0" max="10" step="0.1" value="1" oninput="syncValeur(this.value, 'slider')"><div class="input-group input-group-sm"><input type="text" inputmode="decimal" pattern="^[0-9]*([.,][0-9]+)?$" name="valeur" id="valeur_input" class="form-control text-center fw-bold" value="1" required oninput="syncValeur(this.value, 'input')"></div></div><div class="mb-4"><select name="edit_mode" class="form-select form-select-sm bg-white"><option value="replace" selected>Remplacer l'existant (=)</option><option value="add">Ajouter à l'existant (+)</option></select></div><button type="submit" class="btn btn-dark btn-sm w-100 fw-bold py-2 shadow-sm">Valider</button></form></div></div></div></div>
 
-<!-- MODALE DETAIL D'AFFECTATION -->
 <div class="modal fade" id="detailModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header bg-info text-white py-2"><h6 class="modal-title mb-0"><i class="bi bi-list-task"></i> Détail des affectations du mois</h6><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body bg-light"><div class="text-center mb-3"><div class="fw-bold text-dark fs-5" id="detail_modal_uname"></div><div class="badge bg-secondary fs-6" id="detail_modal_month_display"></div></div><div class="table-responsive"><table class="table table-sm table-bordered align-middle bg-white shadow-sm"><thead class="table-light text-center small"><tr><th class="text-start">Projet / Activité</th><th style="width: 100px;">Charge</th></tr></thead><tbody id="detail_modal_body"></tbody><tfoot class="table-light text-center fw-bold"><tr><td class="text-end">TOTAL DU MOIS</td><td id="detail_modal_total" class="text-primary"></td></tr></tfoot></table></div></div></div></div></div>
 
 <script>
@@ -498,8 +506,13 @@ document.addEventListener("DOMContentLoaded", function() {
                 interaction: { mode: 'nearest', axis: 'x', intersect: false }
             }
         });
+        
+        // Redimensionnement du graphique Detail en fonction de l'onglet actif (Manager ou User Simple)
         const detailTab = document.getElementById('vue-detail-tab');
         if (detailTab) { detailTab.addEventListener('shown.bs.tab', function () { detailChart.resize(); }); }
+        
+        const graphUserTab = document.getElementById('vue-graph-user-tab');
+        if (graphUserTab) { graphUserTab.addEventListener('shown.bs.tab', function () { detailChart.resize(); }); }
     }
 });
 
