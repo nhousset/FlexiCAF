@@ -6,6 +6,7 @@ $allUsers = getDb(FILE_USERS);
 $canSaisie = hasPermission('can_saisie');
 $canDashboard = hasPermission('can_dashboard');
 $canSaisieOthers = hasPermission('can_saisie_others') || $_SESSION['role'] === 'admin';
+$isManager = ($_SESSION['role'] === 'admin' || $canDashboard); // Détermine si l'utilisateur a la vision globale
 
 // --------------------------------------------------------
 // MOTEUR DE NAVIGATION TEMPORELLE (Fenêtre de 6 mois)
@@ -41,7 +42,7 @@ for ($i = 0; $i < 6; $i++) {
 // PRÉPARATION DES ACTEURS
 // --------------------------------------------------------
 $displayUsers = [];
-if ($_SESSION['role'] === 'admin' || $canDashboard) {
+if ($isManager) {
     foreach($allUsers as $id => $u) {
         if (empty($u['is_excluded'])) {
             $displayUsers[$id] = mb_strtoupper($u['name'], 'UTF-8');
@@ -78,7 +79,7 @@ foreach($tasks as $tid => $t) {
 // PRÉPARATION SPÉCIFIQUE : DÉTAIL CONSULTANT
 // --------------------------------------------------------
 $detail_uid = $_GET['detail_uid'] ?? $_SESSION['user_id'];
-if ($_SESSION['role'] !== 'admin' && !$canDashboard) {
+if (!$isManager) {
     $detail_uid = $_SESSION['user_id'];
 }
 
@@ -151,7 +152,41 @@ foreach($detail_grid as $tid => $months) {
 }
 
 // --------------------------------------------------------
-// CONSTRUCTION DES DONNÉES DU GRAPHIQUE DETAIL CONSULTANT
+// MOTEUR DE COULEURS HEATMAP
+// --------------------------------------------------------
+function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
+    if ($is_virtual) {
+        if ($valeur == 0) return 'background-color: #f8f9fa; color: #adb5bd;';
+        return 'background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); color: #334155; font-weight: bold; border: 1px dashed #94a3b8; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);';
+    }
+    
+    if ($valeur == 0) return 'background-color: #ffffff;';
+    $perc = $capacite_max > 0 ? round(($valeur / $capacite_max) * 100) : 0;
+    
+    if ($perc <= 60) {
+        return 'background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); color: #065f46; border: 1px solid #6ee7b7; box-shadow: inset 0 2px 4px rgba(255,255,255,0.5);'; 
+    }
+    if ($perc <= 90) {
+        return 'background: linear-gradient(135deg, #34d399 0%, #10b981 100%); color: #022c22; font-weight: bold; border: 1px solid #059669; box-shadow: inset 0 2px 4px rgba(255,255,255,0.3);'; 
+    }
+    if ($perc <= 100) {
+        return 'background: linear-gradient(135deg, #fde047 0%, #facc15 100%); color: #713f12; font-weight: bold; border: 1px solid #eab308; box-shadow: inset 0 2px 4px rgba(255,255,255,0.4);'; 
+    }
+    return 'background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: #ffffff; font-weight: bold; border: 1px solid #991b1b; box-shadow: inset 0 2px 4px rgba(255,255,255,0.2), 0 2px 5px rgba(239, 68, 68, 0.3); text-shadow: 0 1px 2px rgba(0,0,0,0.2);'; 
+}
+
+function getDetailHeatmapStyle($valeur) {
+    if ($valeur == 0) return 'background-color: #ffffff;';
+    return 'background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); color: #065f46; border: 1px solid #6ee7b7; box-shadow: inset 0 2px 4px rgba(255,255,255,0.5); font-weight: bold; transition: all 0.2s;'; 
+}
+
+function getProjectHeatmapStyle($valeur) {
+    if ($valeur == 0) return 'background-color: #ffffff;';
+    return 'background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%); color: #3730a3; border: 1px solid #a5b4fc; box-shadow: inset 0 2px 4px rgba(255,255,255,0.5); font-weight: bold; transition: all 0.2s;';
+}
+
+// --------------------------------------------------------
+// PRÉPARATION DONNÉES GRAPHIQUE DÉTAIL
 // --------------------------------------------------------
 $typeColorsDetail = [
     'Technique' => '#fef08a',   
@@ -197,40 +232,6 @@ foreach($chart_detail_type_month as $type => $monthsData) {
         ];
     }
 }
-
-// --------------------------------------------------------
-// MOTEUR DE COULEURS HEATMAP
-// --------------------------------------------------------
-function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
-    if ($is_virtual) {
-        if ($valeur == 0) return 'background-color: #f8f9fa; color: #adb5bd;';
-        return 'background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); color: #334155; font-weight: bold; border: 1px dashed #94a3b8; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);';
-    }
-    
-    if ($valeur == 0) return 'background-color: #ffffff;';
-    $perc = $capacite_max > 0 ? round(($valeur / $capacite_max) * 100) : 0;
-    
-    if ($perc <= 60) {
-        return 'background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); color: #065f46; border: 1px solid #6ee7b7; box-shadow: inset 0 2px 4px rgba(255,255,255,0.5);'; 
-    }
-    if ($perc <= 90) {
-        return 'background: linear-gradient(135deg, #34d399 0%, #10b981 100%); color: #022c22; font-weight: bold; border: 1px solid #059669; box-shadow: inset 0 2px 4px rgba(255,255,255,0.3);'; 
-    }
-    if ($perc <= 100) {
-        return 'background: linear-gradient(135deg, #fde047 0%, #facc15 100%); color: #713f12; font-weight: bold; border: 1px solid #eab308; box-shadow: inset 0 2px 4px rgba(255,255,255,0.4);'; 
-    }
-    return 'background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: #ffffff; font-weight: bold; border: 1px solid #991b1b; box-shadow: inset 0 2px 4px rgba(255,255,255,0.2), 0 2px 5px rgba(239, 68, 68, 0.3); text-shadow: 0 1px 2px rgba(0,0,0,0.2);'; 
-}
-
-function getDetailHeatmapStyle($valeur) {
-    if ($valeur == 0) return 'background-color: #ffffff;';
-    return 'background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); color: #065f46; border: 1px solid #6ee7b7; box-shadow: inset 0 2px 4px rgba(255,255,255,0.5); font-weight: bold; transition: all 0.2s;'; 
-}
-
-function getProjectHeatmapStyle($valeur) {
-    if ($valeur == 0) return 'background-color: #ffffff;';
-    return 'background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%); color: #3730a3; border: 1px solid #a5b4fc; box-shadow: inset 0 2px 4px rgba(255,255,255,0.5); font-weight: bold; transition: all 0.2s;';
-}
 ?>
 
 <style>
@@ -262,22 +263,32 @@ function getProjectHeatmapStyle($valeur) {
 </div>
 
 <ul class="nav nav-tabs" id="viewTabs" role="tablist">
-  <li class="nav-item" role="presentation">
-    <button class="nav-link active" id="vue1-tab" data-bs-toggle="tab" data-bs-target="#vue1" type="button"><i class="bi bi-person-lines-fill"></i> Consultant / Mois</button>
-  </li>
-  <li class="nav-item" role="presentation">
-    <button class="nav-link text-primary fw-bold" id="vue-detail-tab" data-bs-toggle="tab" data-bs-target="#vue-detail" type="button"><i class="bi bi-person-badge"></i> Détail Consultant</button>
-  </li>
-  <li class="nav-item" role="presentation">
-    <button class="nav-link" id="vue2-tab" data-bs-toggle="tab" data-bs-target="#vue2" type="button"><i class="bi bi-folder-fill"></i> Projet / Mois</button>
-  </li>
-  <li class="nav-item" role="presentation">
-    <button class="nav-link" id="vue3-tab" data-bs-toggle="tab" data-bs-target="#vue3" type="button"><i class="bi bi-grid-3x3-gap-fill"></i> Projet / Consultant</button>
-  </li>
+  <?php if ($isManager): ?>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="vue1-tab" data-bs-toggle="tab" data-bs-target="#vue1" type="button"><i class="bi bi-person-lines-fill"></i> Consultant / Mois</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link text-primary fw-bold" id="vue-detail-tab" data-bs-toggle="tab" data-bs-target="#vue-detail" type="button"><i class="bi bi-person-badge"></i> Détail Consultant</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="vue2-tab" data-bs-toggle="tab" data-bs-target="#vue2" type="button"><i class="bi bi-folder-fill"></i> Projet / Mois</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="vue3-tab" data-bs-toggle="tab" data-bs-target="#vue3" type="button"><i class="bi bi-grid-3x3-gap-fill"></i> Projet / Consultant</button>
+      </li>
+  <?php else: ?>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active text-primary fw-bold" id="vue-detail-tab" data-bs-toggle="tab" data-bs-target="#vue-detail" type="button"><i class="bi bi-person-badge"></i> Mon activité</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="vue2-tab" data-bs-toggle="tab" data-bs-target="#vue2" type="button"><i class="bi bi-folder-fill"></i> Mes projets</button>
+      </li>
+  <?php endif; ?>
 </ul>
 
 <div class="tab-content bg-white border border-top-0 p-3 rounded-bottom shadow-sm" id="viewTabsContent">
 
+    <?php if ($isManager): ?>
     <div class="tab-pane active" id="vue1" role="tabpanel">
         
         <div class="d-flex justify-content-end mb-3 gap-2">
@@ -389,10 +400,11 @@ function getProjectHeatmapStyle($valeur) {
         </div>
         <div class="mt-2 small text-muted"><i class="bi bi-info-circle"></i> Cliquez sur une cellule pour consulter le détail des affectations de ce mois.</div>
     </div>
+    <?php endif; ?>
 
-    <div class="tab-pane" id="vue-detail" role="tabpanel">
+    <div class="tab-pane <?= !$isManager ? 'active' : '' ?>" id="vue-detail" role="tabpanel">
         
-        <?php if ($_SESSION['role'] === 'admin' || $canDashboard): ?>
+        <?php if ($isManager): ?>
         <form method="GET" class="mb-4 d-flex align-items-center bg-light p-2 rounded border">
             <input type="hidden" name="action" value="home">
             <input type="hidden" name="date" value="<?= htmlspecialchars($_GET['date'] ?? '') ?>">
@@ -404,7 +416,7 @@ function getProjectHeatmapStyle($valeur) {
             </select>
         </form>
         <?php else: ?>
-            <h5 class="mb-3 text-primary fw-bold"><i class="bi bi-person-badge"></i> Mon Détail d'Affectation</h5>
+            <h5 class="mb-3 text-primary fw-bold"><i class="bi bi-person-badge"></i> Mon Activité</h5>
         <?php endif; ?>
 
         <div class="bg-light p-3 rounded shadow-sm border mb-4">
@@ -562,6 +574,7 @@ function getProjectHeatmapStyle($valeur) {
         </div>
     </div>
 
+    <?php if ($isManager): ?>
     <div class="tab-pane" id="vue3" role="tabpanel">
         <div class="alert alert-light border small py-2 mb-3">
             <i class="bi bi-info-square"></i> Cette vue agrège l'effort total de chaque consultant sur la période affichée (les 6 mois).
@@ -628,6 +641,8 @@ function getProjectHeatmapStyle($valeur) {
             </table>
         </div>
     </div>
+    <?php endif; ?>
+
 </div>
 
 <div class="modal fade" id="fastAddModal" tabindex="-1">
@@ -755,6 +770,8 @@ function getCookie(name) {
 
 function toggleDashboardSection(containerId, cookieName) {
     const container = document.getElementById(containerId);
+    if (!container) return;
+    
     const isHidden = container.classList.contains('d-none');
     const btn = document.getElementById('btnToggle' + (containerId === 'kpi_container' ? 'Kpi' : 'Chart'));
 
@@ -776,13 +793,16 @@ function toggleDashboardSection(containerId, cookieName) {
 
 // Application de l'état des sections au chargement
 document.addEventListener("DOMContentLoaded", function() {
-    if (getCookie('cookie_kpi') === 'hide') {
-        document.getElementById('kpi_container').classList.add('d-none');
+    const kpiContainer = document.getElementById('kpi_container');
+    const chartContainer = document.getElementById('chart_container');
+    
+    if (kpiContainer && getCookie('cookie_kpi') === 'hide') {
+        kpiContainer.classList.add('d-none');
         const btnKpi = document.getElementById('btnToggleKpi');
         if (btnKpi) btnKpi.innerHTML = '<i class="bi bi-eye"></i> Afficher KPIs';
     }
-    if (getCookie('cookie_chart') === 'hide') {
-        document.getElementById('chart_container').classList.add('d-none');
+    if (chartContainer && getCookie('cookie_chart') === 'hide') {
+        chartContainer.classList.add('d-none');
         const btnChart = document.getElementById('btnToggleChart');
         if (btnChart) btnChart.innerHTML = '<i class="bi bi-eye"></i> Afficher Graphique';
     }
@@ -791,10 +811,13 @@ document.addEventListener("DOMContentLoaded", function() {
 
 document.addEventListener("DOMContentLoaded", function() {
     let activeTab = localStorage.getItem('activeTab_monthly');
-    if (activeTab && document.querySelector(activeTab)) {
-        let tab = new bootstrap.Tab(document.querySelector(activeTab));
+    let tabEl = activeTab ? document.querySelector(activeTab) : null;
+    
+    if (tabEl) {
+        let tab = new bootstrap.Tab(tabEl);
         tab.show();
     }
+    
     document.querySelectorAll('button[data-bs-toggle="tab"]').forEach(btn => {
         btn.addEventListener('shown.bs.tab', function (e) {
             localStorage.setItem('activeTab_monthly', '#' + e.target.id);
