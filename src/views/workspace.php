@@ -5,7 +5,6 @@ $allUsers = getDb(FILE_USERS);
 
 $canSaisie = hasPermission('can_saisie');
 $canDashboard = hasPermission('can_dashboard');
-// VÉRIFICATION DE LA NOUVELLE PERMISSION
 $canSaisieOthers = hasPermission('can_saisie_others') || $_SESSION['role'] === 'admin';
 
 // --------------------------------------------------------
@@ -152,6 +151,54 @@ foreach($detail_grid as $tid => $months) {
 }
 
 // --------------------------------------------------------
+// CONSTRUCTION DES DONNÉES DU GRAPHIQUE DETAIL CONSULTANT
+// --------------------------------------------------------
+$typeColorsDetail = [
+    'Technique' => '#fef08a',   
+    'Fonctionnel' => '#bbf7d0', 
+    'Structure' => '#bae6fd',   
+    'Absences' => '#fca5a5',    
+    'Formation' => '#e9d5ff'    
+];
+
+$chartDatasetsDetail = [];
+$capDataDetail = [];
+foreach($dash_months as $m_key => $m_data) {
+    $capDataDetail[] = ($detail_uid === '_virtual_unassigned_') ? 0 : $m_data['working_days'];
+}
+$chartDatasetsDetail[] = [
+    'type' => 'line',
+    'label' => 'Capacité Théorique',
+    'data' => $capDataDetail,
+    'borderColor' => '#ef4444', 
+    'backgroundColor' => '#ef4444',
+    'borderWidth' => 3,
+    'fill' => false,
+    'tension' => 0.4,
+    'pointRadius' => 5,
+    'pointBackgroundColor' => '#ffffff',
+    'pointBorderColor' => '#ef4444',
+    'pointBorderWidth' => 2,
+    'pointHoverRadius' => 7,
+    'order' => 0 
+];
+
+foreach($chart_detail_type_month as $type => $monthsData) {
+    if(array_sum($monthsData) > 0) {
+        $chartDatasetsDetail[] = [
+            'type' => 'bar',
+            'label' => $type,
+            'data' => array_values($monthsData),
+            'backgroundColor' => $typeColorsDetail[$type] ?? '#cbd5e1', 
+            'borderColor' => 'rgba(0,0,0,0.05)',
+            'borderWidth' => 1,
+            'borderRadius' => 6,
+            'order' => 1
+        ];
+    }
+}
+
+// --------------------------------------------------------
 // MOTEUR DE COULEURS HEATMAP
 // --------------------------------------------------------
 function getMonthlyHeatmapStyle($valeur, $capacite_max, $is_virtual = false) {
@@ -226,9 +273,6 @@ function getProjectHeatmapStyle($valeur) {
   </li>
   <li class="nav-item" role="presentation">
     <button class="nav-link" id="vue3-tab" data-bs-toggle="tab" data-bs-target="#vue3" type="button"><i class="bi bi-grid-3x3-gap-fill"></i> Projet / Consultant</button>
-  </li>
-  <li class="nav-item" role="presentation">
-    <button class="nav-link text-secondary fw-bold" id="vue-graph-tab" data-bs-toggle="tab" data-bs-target="#vue-graph" type="button"><i class="bi bi-bar-chart-fill"></i> Graphique Global</button>
   </li>
 </ul>
 
@@ -584,20 +628,6 @@ function getProjectHeatmapStyle($valeur) {
             </table>
         </div>
     </div>
-
-    <div class="tab-pane" id="vue-graph" role="tabpanel">
-        <div class="alert alert-light border small py-2 mb-3 shadow-sm d-flex flex-wrap justify-content-between align-items-center gap-2">
-            <div>
-                <i class="bi bi-info-square text-primary"></i> <strong>Aperçu analytique :</strong> Répartition de la charge globale superposée à la capacité théorique.
-            </div>
-        </div>
-        <div class="bg-white p-4 rounded shadow-sm border">
-            <div class="text-center text-muted p-5">
-                <i class="bi bi-bar-chart fs-1"></i><br>Le Graphique global a été intégré directement dans la vue <b>Consultant / Mois</b> pour un accès plus rapide.
-            </div>
-        </div>
-    </div>
-
 </div>
 
 <div class="modal fade" id="fastAddModal" tabindex="-1">
