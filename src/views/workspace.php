@@ -5,6 +5,7 @@ $allUsers = getDb(FILE_USERS);
 
 $canSaisie = hasPermission('can_saisie');
 $canDashboard = hasPermission('can_dashboard');
+// VÉRIFICATION DE LA NOUVELLE PERMISSION
 $canSaisieOthers = hasPermission('can_saisie_others') || $_SESSION['role'] === 'admin';
 
 // --------------------------------------------------------
@@ -183,56 +184,6 @@ function getProjectHeatmapStyle($valeur) {
     if ($valeur == 0) return 'background-color: #ffffff;';
     return 'background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%); color: #3730a3; border: 1px solid #a5b4fc; box-shadow: inset 0 2px 4px rgba(255,255,255,0.5); font-weight: bold; transition: all 0.2s;';
 }
-
-// --------------------------------------------------------
-// PRÉPARATION DONNÉES GRAPHIQUE (CHART.JS)
-// --------------------------------------------------------
-$typeColors = [
-    'Technique' => '#fef08a',   
-    'Fonctionnel' => '#bbf7d0', 
-    'Structure' => '#bae6fd',   
-    'Absences' => '#fca5a5',    
-    'Formation' => '#e9d5ff'    
-];
-$userColors = ['#fca5a5', '#fdba74', '#fde047', '#86efac', '#5eead4', '#67e8f9', '#93c5fd', '#a5b4fc', '#d8b4fe', '#f9a8d4'];
-
-// Données : VUE DÉTAIL DU CONSULTANT SÉLECTIONNÉ
-$chartDatasetsDetail = [];
-$capDataDetail = [];
-foreach($dash_months as $m_key => $m_data) {
-    $capDataDetail[] = ($detail_uid === '_virtual_unassigned_') ? 0 : $m_data['working_days'];
-}
-$chartDatasetsDetail[] = [
-    'type' => 'line',
-    'label' => 'Capacité Théorique',
-    'data' => $capDataDetail,
-    'borderColor' => '#ef4444', 
-    'backgroundColor' => '#ef4444',
-    'borderWidth' => 3,
-    'fill' => false,
-    'tension' => 0.4,
-    'pointRadius' => 5,
-    'pointBackgroundColor' => '#ffffff',
-    'pointBorderColor' => '#ef4444',
-    'pointBorderWidth' => 2,
-    'pointHoverRadius' => 7,
-    'order' => 0 
-];
-
-foreach($chart_detail_type_month as $type => $monthsData) {
-    if(array_sum($monthsData) > 0) {
-        $chartDatasetsDetail[] = [
-            'type' => 'bar',
-            'label' => $type,
-            'data' => array_values($monthsData),
-            'backgroundColor' => $typeColors[$type] ?? '#cbd5e1', 
-            'borderColor' => 'rgba(0,0,0,0.05)',
-            'borderWidth' => 1,
-            'borderRadius' => 6,
-            'order' => 1
-        ];
-    }
-}
 ?>
 
 <style>
@@ -276,24 +227,31 @@ foreach($chart_detail_type_month as $type => $monthsData) {
   <li class="nav-item" role="presentation">
     <button class="nav-link" id="vue3-tab" data-bs-toggle="tab" data-bs-target="#vue3" type="button"><i class="bi bi-grid-3x3-gap-fill"></i> Projet / Consultant</button>
   </li>
-  <?php if($canSaisie): ?>
-  <li class="nav-item ms-auto" role="presentation">
-    <button class="nav-link text-success fw-bold" id="saisie-tab" data-bs-toggle="tab" data-bs-target="#saisie" type="button"><i class="bi bi-plus-circle"></i> Saisie Libre</button>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link text-secondary fw-bold" id="vue-graph-tab" data-bs-toggle="tab" data-bs-target="#vue-graph" type="button"><i class="bi bi-bar-chart-fill"></i> Graphique Global</button>
   </li>
-  <?php endif; ?>
 </ul>
 
 <div class="tab-content bg-white border border-top-0 p-3 rounded-bottom shadow-sm" id="viewTabsContent">
 
-    <!-- ========================================================================================= -->
-    <!-- VUE 1 : CONSULTANT / MOIS -->
     <div class="tab-pane active" id="vue1" role="tabpanel">
         
-        <!-- Inclusion des Nouveaux KPIs pour le Top Management -->
-        <?php include 'views/kpi_global.php'; ?>
+        <div class="d-flex justify-content-end mb-3 gap-2">
+            <button class="btn btn-sm btn-outline-secondary" id="btnToggleKpi" onclick="toggleDashboardSection('kpi_container', 'cookie_kpi')">
+                <i class="bi bi-eye-slash"></i> Masquer KPIs
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" id="btnToggleChart" onclick="toggleDashboardSection('chart_container', 'cookie_chart')">
+                <i class="bi bi-eye-slash"></i> Masquer Graphique
+            </button>
+        </div>
 
-        <!-- Inclusion du Graphique Global aligné -->
-        <?php include 'views/chart_global.php'; ?>
+        <div id="kpi_container">
+            <?php include 'views/kpi_global.php'; ?>
+        </div>
+
+        <div id="chart_container">
+            <?php include 'views/chart_global.php'; ?>
+        </div>
 
         <div class="table-responsive">
             <table class="table table-bordered table-hover text-center align-middle mb-0">
@@ -388,8 +346,6 @@ foreach($chart_detail_type_month as $type => $monthsData) {
         <div class="mt-2 small text-muted"><i class="bi bi-info-circle"></i> Cliquez sur une cellule pour consulter le détail des affectations de ce mois.</div>
     </div>
 
-    <!-- ========================================================================================= -->
-    <!-- VUE DÉTAIL CONSULTANT -->
     <div class="tab-pane" id="vue-detail" role="tabpanel">
         
         <?php if ($_SESSION['role'] === 'admin' || $canDashboard): ?>
@@ -407,7 +363,6 @@ foreach($chart_detail_type_month as $type => $monthsData) {
             <h5 class="mb-3 text-primary fw-bold"><i class="bi bi-person-badge"></i> Mon Détail d'Affectation</h5>
         <?php endif; ?>
 
-        <!-- GRAPHIQUE DÉTAIL DU CONSULTANT SÉLECTIONNÉ -->
         <div class="bg-light p-3 rounded shadow-sm border mb-4">
             <h6 class="fw-bold text-muted small text-uppercase mb-3"><i class="bi bi-bar-chart-fill text-primary"></i> Répartition par type d'activité</h6>
             <canvas id="detailChart" style="max-height: 250px; width: 100%;"></canvas>
@@ -492,8 +447,6 @@ foreach($chart_detail_type_month as $type => $monthsData) {
         </div>
     </div>
 
-    <!-- ========================================================================================= -->
-    <!-- VUE 2 : PROJET / MOIS -->
     <div class="tab-pane" id="vue2" role="tabpanel">
         <div class="table-responsive">
             <table class="table table-bordered table-hover align-middle mb-0">
@@ -565,8 +518,6 @@ foreach($chart_detail_type_month as $type => $monthsData) {
         </div>
     </div>
 
-    <!-- ========================================================================================= -->
-    <!-- VUE 3 : PROJET / CONSULTANT -->
     <div class="tab-pane" id="vue3" role="tabpanel">
         <div class="alert alert-light border small py-2 mb-3">
             <i class="bi bi-info-square"></i> Cette vue agrège l'effort total de chaque consultant sur la période affichée (les 6 mois).
@@ -634,75 +585,21 @@ foreach($chart_detail_type_month as $type => $monthsData) {
         </div>
     </div>
 
-    <!-- ========================================================================================= -->
-    <!-- VUE 4 : SAISIE MANUELLE LIBRE -->
-    <?php if($canSaisie): ?>
-    <div class="tab-pane mt-3" id="saisie" role="tabpanel">
-        <div class="row justify-content-center">
-            <div class="col-md-5">
-                <div class="card shadow-sm border-success">
-                    <div class="card-header bg-success text-white"><i class="bi bi-pencil-square"></i> Déclarer une charge manuellement</div>
-                    <div class="card-body">
-                        <form method="POST">
-                            
-                            <?php if ($canSaisieOthers): ?>
-                            <div class="mb-3">
-                                <label class="form-label small fw-bold text-primary"><i class="bi bi-person-fill"></i> Consultant ciblé</label>
-                                <select name="target_user_id" class="form-select border-primary" required>
-                                    <?php foreach($displayUsers as $uid => $uname): ?>
-                                        <option value="<?= $uid ?>" <?= $uid === $_SESSION['user_id'] ? 'selected' : '' ?>><?= htmlspecialchars($uname) ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                            <?php endif; ?>
-
-                            <div class="mb-3">
-                                <label class="form-label small fw-bold">Projet / Activité ciblé</label>
-                                <select name="task_id" class="form-select" required>
-                                    <option value="" disabled selected>Sélectionner un projet...</option>
-                                    <?php foreach($tasks as $id => $t): 
-                                        $type = htmlspecialchars($t['type'] ?? 'Technique');
-                                    ?>
-                                        <option value="<?= $id ?>">
-                                            [<?= mb_strtoupper($type, 'UTF-8') ?>] <?= htmlspecialchars($t['title']) ?> (<?= htmlspecialchars($t['itbm']) ?>)
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                            
-                            <div class="row mb-3">
-                                <div class="col-md-6">
-                                    <label class="form-label small fw-bold">Mois d'imputation</label>
-                                    <input type="month" name="month_saisie" class="form-control fw-bold text-primary" value="<?= date('Y-m') ?>" required>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label small fw-bold">Volume</label>
-                                    <div class="input-group">
-                                        <input type="text" inputmode="decimal" pattern="^[0-9]*([.,][0-9]+)?$" name="valeur" class="form-control fw-bold text-center" value="1" placeholder="ex: 0.5" required>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="mb-4 bg-light p-2 rounded border">
-                                <label class="form-label small fw-bold text-muted">Mode de sauvegarde :</label>
-                                <select name="edit_mode" class="form-select form-select-sm">
-                                    <option value="add">Ajouter à l'existant (+)</option>
-                                    <option value="replace" selected>Remplacer l'existant (=)</option>
-                                </select>
-                            </div>
-                            
-                            <button type="submit" class="btn btn-success w-100 fw-bold py-2"><i class="bi bi-save"></i> Enregistrer l'affectation</button>
-                        </form>
-                    </div>
-                </div>
+    <div class="tab-pane" id="vue-graph" role="tabpanel">
+        <div class="alert alert-light border small py-2 mb-3 shadow-sm d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div>
+                <i class="bi bi-info-square text-primary"></i> <strong>Aperçu analytique :</strong> Répartition de la charge globale superposée à la capacité théorique.
+            </div>
+        </div>
+        <div class="bg-white p-4 rounded shadow-sm border">
+            <div class="text-center text-muted p-5">
+                <i class="bi bi-bar-chart fs-1"></i><br>Le Graphique global a été intégré directement dans la vue <b>Consultant / Mois</b> pour un accès plus rapide.
             </div>
         </div>
     </div>
-    <?php endif; ?>
 
 </div>
 
-<!-- MODALE D'AFFECTATION -->
 <div class="modal fade" id="fastAddModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered modal-sm">
     <div class="modal-content border-0 shadow-lg">
@@ -748,10 +645,8 @@ foreach($chart_detail_type_month as $type => $monthsData) {
                     <span>Volume (0 pour effacer) :</span>
                 </label>
                 
-                <!-- Le Slider -->
                 <input type="range" class="form-range mb-2" id="valeur_slider" min="0" max="10" step="0.1" value="1" oninput="syncValeur(this.value, 'slider')">
                 
-                <!-- Le Champ Texte synchronisé -->
                 <div class="input-group input-group-sm">
                     <input type="text" inputmode="decimal" pattern="^[0-9]*([.,][0-9]+)?$" name="valeur" id="valeur_input" class="form-control text-center fw-bold" value="1" placeholder="ex: 0.5" required oninput="syncValeur(this.value, 'input')">
                 </div>
@@ -771,7 +666,6 @@ foreach($chart_detail_type_month as $type => $monthsData) {
   </div>
 </div>
 
-<!-- MODALE DÉTAIL D'AFFECTATION -->
 <div class="modal fade" id="detailModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
@@ -802,10 +696,69 @@ foreach($chart_detail_type_month as $type => $monthsData) {
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<!-- CDN Chart.js pour le graphique analytique -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
+// ==========================================
+// GESTION DES COOKIES ET DES TOGGLES DASHBOARD
+// ==========================================
+function setCookie(name, value, days) {
+    var expires = "";
+    if (days) {
+        var date = new Date();
+        date.setTime(date.getTime() + (days*24*60*60*1000));
+        expires = "; expires=" + date.toUTCString();
+    }
+    document.cookie = name + "=" + (value || "")  + expires + "; path=/";
+}
+
+function getCookie(name) {
+    var nameEQ = name + "=";
+    var ca = document.cookie.split(';');
+    for(var i=0;i < ca.length;i++) {
+        var c = ca[i];
+        while (c.charAt(0)==' ') c = c.substring(1,c.length);
+        if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length,c.length);
+    }
+    return null;
+}
+
+function toggleDashboardSection(containerId, cookieName) {
+    const container = document.getElementById(containerId);
+    const isHidden = container.classList.contains('d-none');
+    const btn = document.getElementById('btnToggle' + (containerId === 'kpi_container' ? 'Kpi' : 'Chart'));
+
+    if (isHidden) {
+        container.classList.remove('d-none');
+        setCookie(cookieName, 'show', 365);
+        if (btn) btn.innerHTML = '<i class="bi bi-eye-slash"></i> Masquer ' + (containerId === 'kpi_container' ? 'KPIs' : 'Graphique');
+        
+        // Redimensionnement forcé si c'est le graphique qui est ré-affiché
+        if (containerId === 'chart_container' && window.capacityChartInstance) {
+            window.capacityChartInstance.resize();
+        }
+    } else {
+        container.classList.add('d-none');
+        setCookie(cookieName, 'hide', 365);
+        if (btn) btn.innerHTML = '<i class="bi bi-eye"></i> Afficher ' + (containerId === 'kpi_container' ? 'KPIs' : 'Graphique');
+    }
+}
+
+// Application de l'état des sections au chargement
+document.addEventListener("DOMContentLoaded", function() {
+    if (getCookie('cookie_kpi') === 'hide') {
+        document.getElementById('kpi_container').classList.add('d-none');
+        const btnKpi = document.getElementById('btnToggleKpi');
+        if (btnKpi) btnKpi.innerHTML = '<i class="bi bi-eye"></i> Afficher KPIs';
+    }
+    if (getCookie('cookie_chart') === 'hide') {
+        document.getElementById('chart_container').classList.add('d-none');
+        const btnChart = document.getElementById('btnToggleChart');
+        if (btnChart) btnChart.innerHTML = '<i class="bi bi-eye"></i> Afficher Graphique';
+    }
+});
+
+
 document.addEventListener("DOMContentLoaded", function() {
     let activeTab = localStorage.getItem('activeTab_monthly');
     if (activeTab && document.querySelector(activeTab)) {
