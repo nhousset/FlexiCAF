@@ -135,11 +135,65 @@ if ($action === 'admin' && ($_SESSION['role'] === 'admin' || hasPermission('can_
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($_SESSION['role'] === 'admin') {
             
+            // EVOLUTION : Traitement de la Saisie Récurrente
+            if (isset($_POST['add_recurrence'])) {
+                $target_uid = $_POST['target_user_id'];
+                $task_id = $_POST['task_id'];
+                $valeur = floatval(str_replace(',', '.', trim($_POST['valeur'])));
+                $start_m = $_POST['start_month'];
+                $end_m = $_POST['end_month'];
+                $mode = $_POST['edit_mode'] ?? 'add';
+
+                $start_dt = new DateTime($start_m . '-01');
+                $end_dt = new DateTime($end_m . '-01');
+
+                if ($start_dt <= $end_dt && $valeur >= 0) {
+                    $data = getDb(FILE_DATA);
+
+                    if ($mode === 'replace') {
+                        $dates_to_replace = [];
+                        $curr = clone $start_dt;
+                        while ($curr <= $end_dt) {
+                            $dates_to_replace[] = $curr->format('Y-m-d');
+                            $curr->modify('+1 month');
+                        }
+                        
+                        $data = array_filter($data, function($e) use ($target_uid, $task_id, $dates_to_replace) {
+                            return !($e['user_id'] === $target_uid && $e['task_id'] === $task_id && in_array($e['date'], $dates_to_replace));
+                        });
+                        $data = array_values($data);
+                    }
+
+                    if ($valeur > 0) {
+                        $curr = clone $start_dt;
+                        while ($curr <= $end_dt) {
+                            $data[] = [
+                                'id' => uniqid('evt_'),
+                                'user_id' => $target_uid,
+                                'task_id' => $task_id,
+                                'date' => $curr->format('Y-m-d'),
+                                'valeur_j' => $valeur
+                            ];
+                            $curr->modify('+1 month');
+                        }
+                    }
+                    saveDb(FILE_DATA, $data);
+
+                    $users = getDb(FILE_USERS);
+                    $tasks = getDb(FILE_TASKS);
+                    $uname = $users[$target_uid]['name'] ?? 'Inconnu';
+                    $tname = $tasks[$task_id]['title'] ?? 'Inconnu';
+                    $action_desc = ($mode === 'replace') ? "Remplacement" : "Ajout";
+                    logAudit("Saisie Récurrente", "$action_desc de $valeur JH/mois du $start_m au $end_m pour $uname sur [$tname]");
+
+                    header('Location: ?action=admin&recurrence_success=1'); exit;
+                }
+            }
+
             if (isset($_POST['update_settings'])) {
                 $settings = getDb(FILE_SETTINGS);
                 $settings['app_name'] = trim($_POST['app_name']);
                 if (empty($settings['app_name'])) $settings['app_name'] = 'FlexiCAF';
-                // EVOLUTION: Enregistrement de l'option d'activation du Reste à planifier
                 $settings['show_backlog'] = isset($_POST['show_backlog']); 
                 saveDb(FILE_SETTINGS, $settings);
                 logAudit("Configuration", "Modification des paramètres globaux de l'application");
