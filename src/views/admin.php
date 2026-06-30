@@ -1,5 +1,7 @@
 <?php
 $pastel_colors = ['#fca5a5', '#fdba74', '#fde047', '#86efac', '#5eead4', '#67e8f9', '#93c5fd', '#a5b4fc', '#d8b4fe', '#f9a8d4'];
+$allUsersList = getDb(FILE_USERS);
+$allTasksList = getDb(FILE_TASKS);
 ?>
 <style>
 .color-picker-label {
@@ -32,13 +34,14 @@ $pastel_colors = ['#fca5a5', '#fdba74', '#fde047', '#86efac', '#5eead4', '#67e8f
     <?php endif; ?>
 </div>
 
-<!-- ========================================================= -->
-<!-- PARAMÈTRES GLOBAUX                                        -->
-<!-- ========================================================= -->
 <?php if ($_SESSION['role'] === 'admin'): ?>
     <?php if(isset($_GET['settings_success'])): ?>
         <div class="alert alert-success small py-2 fw-bold"><i class="bi bi-check-circle"></i> Paramètres mis à jour avec succès.</div>
     <?php endif; ?>
+    <?php if(isset($_GET['recurrence_success'])): ?>
+        <div class="alert alert-success small py-2 fw-bold"><i class="bi bi-check-circle"></i> Opération de saisie récurrente effectuée avec succès.</div>
+    <?php endif; ?>
+    
     <div class="card border-primary shadow-sm mb-4">
         <div class="card-header bg-primary text-white"><i class="bi bi-sliders"></i> Configuration de l'application</div>
         <div class="card-body py-3">
@@ -49,7 +52,6 @@ $pastel_colors = ['#fca5a5', '#fdba74', '#fde047', '#86efac', '#5eead4', '#67e8f
                     <?php $current_settings = getDb(FILE_SETTINGS); ?>
                     <input type="text" name="app_name" class="form-control fw-bold" value="<?= htmlspecialchars($current_settings['app_name'] ?? 'FlexiCAF') ?>" required>
                     
-                    <!-- EVOLUTION : Option pour activer/désactiver le mécanisme "Reste à planifier" -->
                     <div class="form-check form-switch mt-2">
                         <input class="form-check-input" type="checkbox" name="show_backlog" id="show_backlog" <?= (!isset($current_settings['show_backlog']) || $current_settings['show_backlog']) ? 'checked' : '' ?>>
                         <label class="form-check-label small fw-bold text-secondary" for="show_backlog">Activer le mécanisme de Backlog "Reste à planifier"</label>
@@ -64,7 +66,6 @@ $pastel_colors = ['#fca5a5', '#fdba74', '#fde047', '#86efac', '#5eead4', '#67e8f
 <?php endif; ?>
 
 <div class="row">
-    <!-- GESTION UTILISATEURS -->
     <?php if ($_SESSION['role'] === 'admin'): ?>
     <div class="col-md-6">
         <div class="card border-info shadow-sm mb-4">
@@ -96,7 +97,7 @@ $pastel_colors = ['#fca5a5', '#fdba74', '#fde047', '#86efac', '#5eead4', '#67e8f
                         </form>
                         <hr class="mt-4"><h6 class="fw-bold text-muted small text-uppercase">Comptes Actifs</h6>
                         <ul class="list-group list-group-flush small">
-                            <?php foreach(getDb(FILE_USERS) as $id => $u): 
+                            <?php foreach($allUsersList as $id => $u): 
                                 $has_saisie = isset($u['can_saisie']) ? $u['can_saisie'] : true;
                                 $has_saisie_others = isset($u['can_saisie_others']) ? $u['can_saisie_others'] : false;
                                 $has_dash = isset($u['can_dashboard']) ? $u['can_dashboard'] : false;
@@ -119,7 +120,7 @@ $pastel_colors = ['#fca5a5', '#fdba74', '#fde047', '#86efac', '#5eead4', '#67e8f
                     <div class="tab-pane fade" id="user-json" role="tabpanel">
                         <form method="POST">
                             <input type="hidden" name="update_users_json" value="1">
-                            <div class="mb-3"><textarea name="raw_users_json" class="form-control bg-dark text-light border-secondary" rows="18" style="font-family: monospace; font-size: 0.85rem;" spellcheck="false"><?= htmlspecialchars(json_encode(getDb(FILE_USERS), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)) ?></textarea></div>
+                            <div class="mb-3"><textarea name="raw_users_json" class="form-control bg-dark text-light border-secondary" rows="18" style="font-family: monospace; font-size: 0.85rem;" spellcheck="false"><?= htmlspecialchars(json_encode($allUsersList, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)) ?></textarea></div>
                             <button type="submit" class="btn btn-warning btn-sm w-100 fw-bold"><i class="bi bi-save-fill"></i> Forcer la sauvegarde JSON</button>
                         </form>
                     </div>
@@ -129,7 +130,6 @@ $pastel_colors = ['#fca5a5', '#fdba74', '#fde047', '#86efac', '#5eead4', '#67e8f
     </div>
     <?php endif; ?>
 
-    <!-- REFERENTIEL TACHES -->
     <div class="col-md-<?= ($_SESSION['role'] === 'admin') ? '6' : '12' ?>">
         <div class="card border-secondary shadow-sm mb-4">
             <div class="card-header bg-secondary text-white"><i class="bi bi-tags-fill"></i> Catalogue des Activités</div>
@@ -181,7 +181,7 @@ $pastel_colors = ['#fca5a5', '#fdba74', '#fde047', '#86efac', '#5eead4', '#67e8f
                         <div class="table-responsive">
                             <table class="table table-sm align-middle small">
                                 <tbody>
-                                    <?php foreach(getDb(FILE_TASKS) as $id => $t): 
+                                    <?php foreach($allTasksList as $id => $t): 
                                         $color = $t['color'] ?? '#e2e8f0'; $type = $t['type'] ?? 'Technique';
                                     ?>
                                         <tr>
@@ -196,7 +196,7 @@ $pastel_colors = ['#fca5a5', '#fdba74', '#fde047', '#86efac', '#5eead4', '#67e8f
                     <div class="tab-pane fade" id="json" role="tabpanel">
                         <form method="POST">
                             <input type="hidden" name="update_tasks_json" value="1">
-                            <div class="mb-3"><textarea name="raw_tasks_json" class="form-control bg-dark text-light border-secondary" rows="18" style="font-family: monospace; font-size: 0.85rem;" spellcheck="false"><?= htmlspecialchars(json_encode(getDb(FILE_TASKS), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)) ?></textarea></div>
+                            <div class="mb-3"><textarea name="raw_tasks_json" class="form-control bg-dark text-light border-secondary" rows="18" style="font-family: monospace; font-size: 0.85rem;" spellcheck="false"><?= htmlspecialchars(json_encode($allTasksList, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)) ?></textarea></div>
                             <button type="submit" class="btn btn-warning btn-sm w-100 fw-bold"><i class="bi bi-save-fill"></i> Forcer la sauvegarde JSON</button>
                         </form>
                     </div>
@@ -206,20 +206,158 @@ $pastel_colors = ['#fca5a5', '#fdba74', '#fde047', '#86efac', '#5eead4', '#67e8f
     </div>
 </div>
 
-<!-- AUDIT LOG -->
 <?php if ($_SESSION['role'] === 'admin'): ?>
-<div class="row mt-4"><div class="col-12"><div class="card border-dark shadow-sm mb-4"><div class="card-header bg-dark text-white d-flex justify-content-between align-items-center"><div><i class="bi bi-clock-history"></i> Historique des Actions (Audit)</div><span class="badge bg-light text-dark">Dernières 500 actions</span></div><div class="card-body p-0"><div class="table-responsive" style="max-height: 400px;"><table class="table table-hover table-sm align-middle mb-0 small"><thead class="table-light" style="position: sticky; top: 0; z-index: 10;"><tr><th style="width: 150px; padding-left: 15px;">Date</th><th style="width: 150px;">Utilisateur</th><th style="width: 150px;">Type d'action</th><th>Détails</th></tr></thead><tbody><?php $auditLogs = getDb(FILE_AUDIT); if(empty($auditLogs)): ?><tr><td colspan="4" class="text-center text-muted py-4">Aucune action enregistrée.</td></tr><?php else: foreach($auditLogs as $log): ?><tr><td class="text-muted ps-3"><?= htmlspecialchars(date('d/m/Y H:i:s', strtotime($log['date']))) ?></td><td class="fw-bold"><?= htmlspecialchars($log['user']) ?></td><td><span class="badge bg-secondary"><?= htmlspecialchars($log['action']) ?></span></td><td class="text-truncate" style="max-width: 400px;" title="<?= htmlspecialchars($log['details']) ?>"><?= htmlspecialchars($log['details']) ?></td></tr><?php endforeach; endif; ?></tbody></table></div></div></div></div></div>
+<div class="row">
+    <div class="col-md-12">
+        <div class="card border-success shadow-sm mb-4">
+            <div class="card-header bg-success text-white fw-bold"><i class="bi bi-calendar-range me-1"></i> Saisie Récurrente (Opération de masse)</div>
+            <div class="card-body bg-light">
+                <form id="recurrenceForm" method="POST">
+                    <input type="hidden" name="add_recurrence" value="1">
+                    <div class="row align-items-end g-3">
+                        <div class="col-md-3">
+                            <label class="small fw-bold text-muted">Consultant ciblé</label>
+                            <select name="target_user_id" id="rec_uid" class="form-select border-success" required>
+                                <option value="" disabled selected>Sélectionner...</option>
+                                <?php foreach($allUsersList as $uid => $u): ?>
+                                    <option value="<?= $uid ?>"><?= htmlspecialchars($u['name']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="small fw-bold text-muted">Projet / Activité</label>
+                            <select name="task_id" id="rec_tid" class="form-select border-success" required>
+                                <option value="" disabled selected>Sélectionner...</option>
+                                <?php foreach($allTasksList as $id => $t): ?>
+                                    <option value="<?= $id ?>">[<?= mb_strtoupper($t['type']) ?>] <?= htmlspecialchars($t['title']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-1">
+                            <label class="small fw-bold text-muted">Volume JH</label>
+                            <input type="text" inputmode="decimal" pattern="^[0-9]*([.,][0-9]+)?$" name="valeur" id="rec_val" class="form-control text-center fw-bold text-success" value="1" required>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="small fw-bold text-muted">Du mois</label>
+                            <input type="month" name="start_month" id="rec_start" class="form-control" required>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="small fw-bold text-muted">Au mois (inclus)</label>
+                            <input type="month" name="end_month" id="rec_end" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="row align-items-center mt-3">
+                        <div class="col-md-4">
+                            <label class="small fw-bold text-muted">Mode de traitement</label>
+                            <select name="edit_mode" id="rec_mode" class="form-select form-select-sm">
+                                <option value="replace" selected>Remplacer l'existant (=) (Recommandé)</option>
+                                <option value="add">Ajouter au volume existant (+)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-8 text-end">
+                            <button type="button" class="btn btn-success fw-bold px-4 shadow-sm" onclick="previewRecurrence()">
+                                <i class="bi bi-eye"></i> Prévisualiser l'impact
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
 <?php endif; ?>
 
-<!-- MODALES DES EDITIONS ACCES -->
-<?php if ($_SESSION['role'] === 'admin'): foreach(getDb(FILE_USERS) as $id => $u): 
+<?php if ($_SESSION['role'] === 'admin'): ?>
+<div class="row mt-2"><div class="col-12"><div class="card border-dark shadow-sm mb-4"><div class="card-header bg-dark text-white d-flex justify-content-between align-items-center"><div><i class="bi bi-clock-history"></i> Historique des Actions (Audit)</div><span class="badge bg-light text-dark">Dernières 500 actions</span></div><div class="card-body p-0"><div class="table-responsive" style="max-height: 400px;"><table class="table table-hover table-sm align-middle mb-0 small"><thead class="table-light" style="position: sticky; top: 0; z-index: 10;"><tr><th style="width: 150px; padding-left: 15px;">Date</th><th style="width: 150px;">Utilisateur</th><th style="width: 150px;">Type d'action</th><th>Détails</th></tr></thead><tbody><?php $auditLogs = getDb(FILE_AUDIT); if(empty($auditLogs)): ?><tr><td colspan="4" class="text-center text-muted py-4">Aucune action enregistrée.</td></tr><?php else: foreach($auditLogs as $log): ?><tr><td class="text-muted ps-3"><?= htmlspecialchars(date('d/m/Y H:i:s', strtotime($log['date']))) ?></td><td class="fw-bold"><?= htmlspecialchars($log['user']) ?></td><td><span class="badge bg-secondary"><?= htmlspecialchars($log['action']) ?></span></td><td class="text-truncate" style="max-width: 400px;" title="<?= htmlspecialchars($log['details']) ?>"><?= htmlspecialchars($log['details']) ?></td></tr><?php endforeach; endif; ?></tbody></table></div></div></div></div></div>
+<?php endif; ?>
+
+<?php if ($_SESSION['role'] === 'admin'): foreach($allUsersList as $id => $u): 
     $has_saisie = isset($u['can_saisie']) ? $u['can_saisie'] : true; $has_saisie_others = isset($u['can_saisie_others']) ? $u['can_saisie_others'] : false;
     $has_dash = isset($u['can_dashboard']) ? $u['can_dashboard'] : false; $has_tasks_admin = isset($u['can_manage_tasks']) ? $u['can_manage_tasks'] : false; $is_excluded = isset($u['is_excluded']) ? $u['is_excluded'] : false;
 ?>
 <div class="modal fade" id="editUserModal-<?= $id ?>" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header bg-light py-2"><h6 class="modal-title mb-0">Modifier : <?= htmlspecialchars($u['name'] ?? '') ?></h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><form method="POST"><input type="hidden" name="edit_user" value="1"><input type="hidden" name="user_id" value="<?= $id ?>"><div class="mb-2"><label class="small fw-bold">Nom</label><input type="text" name="u_name" class="form-control form-control-sm" value="<?= htmlspecialchars($u['name'] ?? '') ?>" required></div><div class="mb-2"><label class="small fw-bold">Email</label><input type="email" name="u_email" class="form-control form-control-sm" value="<?= htmlspecialchars($u['email'] ?? '') ?>" required></div><div class="mb-3"><label class="small fw-bold">Nouveau mot de passe</label><input type="password" name="u_pass" class="form-control form-control-sm"></div><div class="bg-light p-2 mb-3 rounded border"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" name="u_can_saisie" id="editSaisie-<?= $id ?>" <?= $has_saisie ? 'checked' : '' ?>><label class="form-check-label small" for="editSaisie-<?= $id ?>">Autoriser la Saisie</label></div><div class="form-check form-switch mt-1"><input class="form-check-input" type="checkbox" name="u_can_saisie_others" id="editSaisieOthers-<?= $id ?>" <?= $has_saisie_others ? 'checked' : '' ?>><label class="form-check-label small text-primary fw-bold" for="editSaisieOthers-<?= $id ?>">Saisie pour un Tiers</label></div><div class="form-check form-switch mt-1"><input class="form-check-input" type="checkbox" name="u_can_dashboard" id="editDash-<?= $id ?>" <?= $has_dash ? 'checked' : '' ?>><label class="form-check-label small" for="editDash-<?= $id ?>">Autoriser le Dashboard Manager</label></div><div class="form-check form-switch mt-1"><input class="form-check-input" type="checkbox" name="u_can_manage_tasks" id="editTasks-<?= $id ?>" <?= $has_tasks_admin ? 'checked' : '' ?>><label class="form-check-label small" for="editTasks-<?= $id ?>">Administrateur des activités</label></div><hr class="my-2"><div class="form-check form-switch mt-1"><input class="form-check-input" type="checkbox" name="u_is_excluded" id="editExcl-<?= $id ?>" <?= $is_excluded ? 'checked' : '' ?>><label class="form-check-label small text-danger" for="editExcl-<?= $id ?>">Masquer du Capacity Planning</label></div></div><button type="submit" class="btn btn-primary btn-sm w-100">Enregistrer</button></form></div></div></div></div>
 <?php endforeach; endif; ?>
 
-<!-- MODALES DES EDITIONS ACTIVITES -->
-<?php if ($_SESSION['role'] === 'admin' || hasPermission('can_manage_tasks')): foreach(getDb(FILE_TASKS) as $id => $t): $color = $t['color'] ?? '#e2e8f0'; $type = $t['type'] ?? 'Technique'; ?>
+<?php if ($_SESSION['role'] === 'admin' || hasPermission('can_manage_tasks')): foreach($allTasksList as $id => $t): $color = $t['color'] ?? '#e2e8f0'; $type = $t['type'] ?? 'Technique'; ?>
 <div class="modal fade" id="editTaskModal-<?= $id ?>" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header bg-light py-2"><h6 class="modal-title mb-0">Modifier : <?= htmlspecialchars($t['title']) ?></h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><form method="POST"><input type="hidden" name="edit_task" value="1"><input type="hidden" name="task_id" value="<?= $id ?>"><div class="mb-2"><label class="small fw-bold">Titre au planning</label><input type="text" name="t_title" class="form-control form-control-sm" value="<?= htmlspecialchars($t['title']) ?>" required></div><div class="row"><div class="col-6 mb-2"><label class="small fw-bold">Type</label><select name="t_type" class="form-select form-select-sm" required><option value="Fonctionnel" <?= $type === 'Fonctionnel' ? 'selected' : '' ?>>Fonctionnel</option><option value="Technique" <?= $type === 'Technique' ? 'selected' : '' ?>>Technique</option><option value="Structure" <?= $type === 'Structure' ? 'selected' : '' ?>>Structure</option><option value="Formation" <?= $type === 'Formation' ? 'selected' : '' ?>>Formation</option><option value="Absences" <?= $type === 'Absences' ? 'selected' : '' ?>>Absences</option></select></div><div class="col-6 mb-2"><label class="small fw-bold">Code Projet (ITBM)</label><input type="text" name="t_itbm" class="form-control form-control-sm" value="<?= htmlspecialchars($t['itbm']) ?>" required></div></div><div class="mb-3"><label class="small fw-bold">Description courte</label><input type="text" name="t_desc" class="form-control form-control-sm" value="<?= htmlspecialchars($t['desc'] ?? '') ?>"></div><div class="mb-4"><label class="small fw-bold d-block mb-2">Couleur</label><div class="d-flex flex-wrap gap-2"><?php $found = in_array($color, $pastel_colors); foreach($pastel_colors as $idx => $col): $isChecked = ($color === $col || (!$found && $idx === 0)) ? 'checked' : ''; ?><input type="radio" class="btn-check" name="t_color" id="edit_color_<?= $id ?>_<?= $idx ?>" value="<?= $col ?>" <?= $isChecked ?>><label class="color-picker-label shadow-sm" style="background-color: <?= $col ?>;" for="edit_color_<?= $id ?>_<?= $idx ?>"></label><?php endforeach; ?></div></div><button type="submit" class="btn btn-primary btn-sm w-100 fw-bold">Enregistrer</button></form></div></div></div></div>
 <?php endforeach; endif; ?>
+
+<div class="modal fade" id="recurrenceModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header bg-success text-white py-2">
+        <h6 class="modal-title mb-0"><i class="bi bi-calendar-check me-2"></i>Confirmation de saisie récurrente</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body bg-light" id="preview_details">
+        </div>
+      <div class="modal-footer border-0 bg-light p-3 justify-content-between">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Annuler</button>
+        <button type="button" class="btn btn-success fw-bold" onclick="document.getElementById('recurrenceForm').submit();">
+            <i class="bi bi-check-lg"></i> Confirmer et Appliquer
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function previewRecurrence() {
+    const uid = document.getElementById('rec_uid');
+    const tid = document.getElementById('rec_tid');
+    const valInput = document.getElementById('rec_val').value.replace(',', '.');
+    const val = parseFloat(valInput);
+    const start = document.getElementById('rec_start').value;
+    const end = document.getElementById('rec_end').value;
+    const modeSelect = document.getElementById('rec_mode');
+    const mode = modeSelect.options[modeSelect.selectedIndex].text;
+
+    if (!uid.value || !tid.value || isNaN(val) || !start || !end) {
+        alert("Veuillez remplir tous les champs correctement.");
+        return;
+    }
+
+    if (start > end) {
+        alert("Attention : La date de début doit être antérieure ou égale à la date de fin.");
+        return;
+    }
+
+    const uname = uid.options[uid.selectedIndex].text;
+    const tname = tid.options[tid.selectedIndex].text;
+
+    let current = new Date(start + '-01T00:00:00');
+    const endDate = new Date(end + '-01T00:00:00');
+    let count = 0;
+    
+    let html = '<ul class="list-group list-group-flush small mb-3 border rounded shadow-sm" style="max-height: 200px; overflow-y: auto;">';
+
+    while (current <= endDate) {
+        const monthStr = current.toLocaleString('fr-FR', { month: 'long', year: 'numeric' });
+        html += `<li class="list-group-item d-flex justify-content-between align-items-center bg-white">
+                    <span class="text-capitalize">${monthStr}</span>
+                    <span class="badge bg-success rounded-pill" style="font-size: 0.75rem;">+ ${val} JH</span>
+                 </li>`;
+        count++;
+        current.setMonth(current.getMonth() + 1);
+    }
+    html += '</ul>';
+    
+    const total = (count * val).toFixed(2);
+
+    document.getElementById('preview_details').innerHTML = `
+        <div class="alert alert-success border-success bg-white mb-3" style="font-size: 0.85rem;">
+            <div class="mb-1"><i class="bi bi-person-fill text-success"></i> <strong>Consultant :</strong> ${uname}</div>
+            <div class="mb-1"><i class="bi bi-tag-fill text-success"></i> <strong>Projet :</strong> ${tname}</div>
+            <div><i class="bi bi-gear-fill text-success"></i> <strong>Action :</strong> ${mode}</div>
+        </div>
+        <p class="small text-muted fw-bold text-uppercase mb-2">Aperçu des mois impactés :</p>
+        ${html}
+        <div class="d-flex justify-content-between align-items-center bg-dark text-white p-3 rounded mt-2 shadow-sm">
+            <span class="fw-bold">TOTAL À INJECTER</span>
+            <span class="fs-4 fw-bolder text-warning">${total} <span class="fs-6">JH</span></span>
+        </div>
+    `;
+
+    new bootstrap.Modal(document.getElementById('recurrenceModal')).show();
+}
+</script>
